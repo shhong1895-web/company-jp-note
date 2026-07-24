@@ -8,14 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1E2A38;
-    --washi:#F3EEE3;
-    --washi-dark:#E7DFCE;
-    --hanko:#B23A2E;
-    --hanko-soft:#E7C9C4;
-    --sage:#4C6B5A;
-    --ink-soft:#5B564C;
-    --amber:#B8862E;
+    --ink:#1E2A38; --washi:#F3EEE3; --washi-dark:#E7DFCE; --hanko:#B23A2E;
+    --hanko-soft:#E7C9C4; --sage:#4C6B5A; --ink-soft:#5B564C; --amber:#B8862E;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--washi);color:var(--ink);font-family:'Noto Sans KR',sans-serif;
@@ -32,11 +26,10 @@
   .stamp{border:2px solid var(--hanko);color:var(--hanko);border-radius:6px;width:56px;height:56px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;}
   .stamp span{font-size:14px;font-weight:700;line-height:1;margin-top:2px;}
-  .stamp-label{color:var(--ink-soft);font-size:10px;margin-top:3px;text-align:center;}
-  .levels{display:flex;gap:8px;margin-top:14px;}
-  .level-btn{border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:5px 12px;
-    border-radius:3px;font-size:13px;font-weight:500;}
-  .level-btn.active{background:var(--ink);color:var(--washi);}
+  .progress-badge{border:1.5px solid var(--ink);border-radius:4px;padding:8px 12px;margin-top:14px;display:flex;
+    justify-content:space-between;align-items:center;}
+  .progress-bar-outer{background:var(--washi-dark);height:8px;border-radius:5px;overflow:hidden;flex:1;margin:0 10px;}
+  .progress-bar-inner{height:8px;background:var(--hanko);transition:width .4s;}
   nav.tabs{max-width:640px;margin:14px auto 0;padding:0 18px;display:flex;gap:2px;flex-wrap:wrap;}
   .tab-btn{background:none;border:none;color:var(--ink-soft);font-weight:700;font-size:13px;
     padding:8px 10px;border-bottom:3px solid transparent;display:flex;align-items:center;gap:5px;}
@@ -44,14 +37,10 @@
   main{max-width:640px;margin:0 auto;padding:20px 18px 60px;}
   .card{border:1.5px solid var(--ink);background:#fff;border-radius:3px;padding:20px;}
   .card-soft{border:1.5px dashed var(--ink-soft);border-radius:3px;padding:26px;text-align:center;}
-  .btn-main{background:var(--ink);color:var(--washi);border:none;padding:10px 20px;border-radius:3px;
-    font-size:14px;font-weight:700;}
-  .btn-hanko{background:var(--hanko);color:#fff;border:none;padding:10px 20px;border-radius:3px;
-    font-size:14px;font-weight:700;}
-  .btn-sage{background:var(--sage);color:#fff;border:none;padding:10px 16px;border-radius:3px;
-    font-size:13px;font-weight:700;}
-  .btn-ghost{background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:8px 14px;
-    border-radius:3px;font-size:13px;font-weight:600;}
+  .btn-main{background:var(--ink);color:var(--washi);border:none;padding:10px 20px;border-radius:3px;font-size:14px;font-weight:700;}
+  .btn-hanko{background:var(--hanko);color:#fff;border:none;padding:10px 20px;border-radius:3px;font-size:14px;font-weight:700;}
+  .btn-sage{background:var(--sage);color:#fff;border:none;padding:10px 16px;border-radius:3px;font-size:13px;font-weight:700;}
+  .btn-ghost{background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:8px 14px;border-radius:3px;font-size:13px;font-weight:600;}
   .kanji-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;}
   .kanji-cell{width:64px;height:64px;border:1.5px solid var(--ink);position:relative;background:#fff;
     display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -61,13 +50,15 @@
   .center{text-align:center;}
   .muted{color:var(--ink-soft);}
   .small{font-size:12px;}
+  .jlpt-tag{display:inline-block;border:1px solid var(--hanko);color:var(--hanko);font-size:10px;font-weight:700;
+    padding:1px 6px;border-radius:8px;}
   .icon-btn{border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:3px;
     padding:8px 16px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;}
   .icon-btn.rec{border-color:var(--hanko);color:var(--hanko);background:var(--hanko-soft);}
   .scorebar{background:var(--washi-dark);height:10px;border-radius:6px;overflow:hidden;}
   .scorebar > div{height:10px;transition:width .4s;}
   .field label{display:block;color:var(--ink-soft);font-size:11px;font-weight:700;margin-top:10px;}
-  .field input, .field textarea{width:100%;margin-top:4px;padding:8px;border:1px solid var(--washi-dark);
+  .field input, .field textarea, .field select{width:100%;margin-top:4px;padding:8px;border:1px solid var(--washi-dark);
     border-radius:3px;font-size:14px;}
   .field textarea{min-height:90px;resize:vertical;font-family:monospace;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
@@ -96,13 +87,12 @@
   .canvas-wrap{position:relative;width:300px;height:300px;margin:0 auto;}
   .canvas-guide{position:absolute;top:0;left:0;width:300px;height:300px;display:flex;align-items:center;justify-content:center;
     font-family:'Shippori Mincho',serif;font-size:150px;color:var(--ink);opacity:.10;pointer-events:none;}
+  audio{width:100%;margin-top:10px;}
 </style>
 </head>
 <body>
 
-<div id="loading" class="center" style="padding-top:120px;">
-  <p class="muted">불러오는 중...</p>
-</div>
+<div id="loading" class="center" style="padding-top:120px;"><p class="muted">불러오는 중...</p></div>
 
 <div id="login-screen" class="hidden">
   <div class="login-card">
@@ -128,12 +118,13 @@
           <p class="brand-jp">会社の日本語ノート</p>
           <h1 class="brand-ko" id="user-greeting">일본어 업무단어 노트</h1>
         </div>
-        <div class="stamp">
-          <span id="streak-num">0</span>
-          <span style="font-size:9px;">일</span>
-        </div>
+        <div class="stamp"><span id="streak-num">0</span><span style="font-size:9px;">일</span></div>
       </div>
-      <div class="levels" id="level-selector"></div>
+      <div class="progress-badge">
+        <span class="small" id="progress-label">N5 수준</span>
+        <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar" style="width:0%;"></div></div>
+        <button class="btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="expandRange()">범위 넓히기</button>
+      </div>
     </div>
   </header>
   <nav class="tabs" id="tab-nav"></nav>
@@ -142,15 +133,13 @@
 
 <div id="toast-root"></div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
 /* =========================================================
-   0. Firebase 설정 - 반드시 본인 프로젝트 값으로 교체하세요
-   Firebase 콘솔 > 프로젝트 설정 > 일반 > 내 앱 > SDK 설정 및 구성
+   0. Firebase 설정
 ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyCg8ZCbmWYC_vahOkyZ9OvGEbOlQy0Kgss",
@@ -165,29 +154,30 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 /* =========================================================
-   1. 상수 / 기본 데이터
+   1. 상수 / 기본 데이터 (JLPT 기반 난이도, 초급/중급/고급 대신 1~100 연속값)
 ========================================================= */
-const LEVELS = ["초급", "중급", "고급"];
+const JLPT_LABELS = ["N5", "N4", "N3", "N2", "N1", "전문용어"];
+const JLPT_DIFF = { N5: 10, N4: 30, N3: 50, N2: 70, N1: 90, "전문용어": 60 };
 
 const DEFAULT_WORDS = [
-  { id: "d1", kanji: "会議", reading: "かいぎ", meaning: "회의", example: "明日、会議があります。", exampleKo: "내일 회의가 있습니다.", level: "초급" },
-  { id: "d2", kanji: "資料", reading: "しりょう", meaning: "자료", example: "資料を準備してください。", exampleKo: "자료를 준비해 주세요.", level: "초급" },
-  { id: "d3", kanji: "報告", reading: "ほうこく", meaning: "보고", example: "進捗を報告します。", exampleKo: "진행 상황을 보고합니다.", level: "초급" },
-  { id: "d4", kanji: "出張", reading: "しゅっちょう", meaning: "출장", example: "来週、大阪へ出張します。", exampleKo: "다음 주 오사카로 출장 갑니다.", level: "초급" },
-  { id: "d5", kanji: "休み", reading: "やすみ", meaning: "휴가, 쉬는 날", example: "明日は休みです。", exampleKo: "내일은 쉬는 날입니다.", level: "초급" },
-  { id: "d6", kanji: "電話", reading: "でんわ", meaning: "전화", example: "後で電話します。", exampleKo: "나중에 전화하겠습니다.", level: "초급" },
-  { id: "d7", kanji: "打ち合わせ", reading: "うちあわせ", meaning: "미팅, 사전 협의", example: "午後、打ち合わせがあります。", exampleKo: "오후에 미팅이 있습니다.", level: "중급" },
-  { id: "d8", kanji: "締め切り", reading: "しめきり", meaning: "마감", example: "締め切りは金曜日です。", exampleKo: "마감은 금요일입니다.", level: "중급" },
-  { id: "d9", kanji: "承認", reading: "しょうにん", meaning: "승인", example: "部長の承認が必要です。", exampleKo: "부장님의 승인이 필요합니다.", level: "중급" },
-  { id: "d10", kanji: "提案", reading: "ていあん", meaning: "제안", example: "新しい提案をします。", exampleKo: "새로운 제안을 합니다.", level: "중급" },
-  { id: "d11", kanji: "見積もり", reading: "みつもり", meaning: "견적", example: "見積もりを送ります。", exampleKo: "견적을 보내겠습니다.", level: "중급" },
-  { id: "d12", kanji: "対応", reading: "たいおう", meaning: "대응, 처리", example: "すぐに対応します。", exampleKo: "즉시 대응하겠습니다.", level: "중급" },
-  { id: "d13", kanji: "契約", reading: "けいやく", meaning: "계약", example: "契約書にサインしてください。", exampleKo: "계약서에 서명해 주세요.", level: "고급" },
-  { id: "d14", kanji: "交渉", reading: "こうしょう", meaning: "협상", example: "価格を交渉します。", exampleKo: "가격을 협상합니다.", level: "고급" },
-  { id: "d15", kanji: "稟議", reading: "りんぎ", meaning: "품의(결재)", example: "稟議書を作成します。", exampleKo: "품의서를 작성합니다.", level: "고급" },
-  { id: "d16", kanji: "納期", reading: "のうき", meaning: "납기", example: "納期を守ってください。", exampleKo: "납기를 지켜 주세요.", level: "고급" },
-  { id: "d17", kanji: "損益", reading: "そんえき", meaning: "손익", example: "損益を確認します。", exampleKo: "손익을 확인합니다.", level: "고급" },
-  { id: "d18", kanji: "是正", reading: "ぜせい", meaning: "시정", example: "問題を是正します。", exampleKo: "문제를 시정합니다.", level: "고급" }
+  { id: "d1", kanji: "会議", reading: "かいぎ", meaning: "회의", example: "明日、会議があります。", exampleKo: "내일 회의가 있습니다.", jlpt: "N4", difficulty: 30 },
+  { id: "d2", kanji: "資料", reading: "しりょう", meaning: "자료", example: "資料を準備してください。", exampleKo: "자료를 준비해 주세요.", jlpt: "N3", difficulty: 50 },
+  { id: "d3", kanji: "報告", reading: "ほうこく", meaning: "보고", example: "進捗を報告します。", exampleKo: "진행 상황을 보고합니다.", jlpt: "N3", difficulty: 50 },
+  { id: "d4", kanji: "出張", reading: "しゅっちょう", meaning: "출장", example: "来週、大阪へ出張します。", exampleKo: "다음 주 오사카로 출장 갑니다.", jlpt: "N3", difficulty: 50 },
+  { id: "d5", kanji: "休み", reading: "やすみ", meaning: "휴가, 쉬는 날", example: "明日は休みです。", exampleKo: "내일은 쉬는 날입니다.", jlpt: "N5", difficulty: 10 },
+  { id: "d6", kanji: "電話", reading: "でんわ", meaning: "전화", example: "後で電話します。", exampleKo: "나중에 전화하겠습니다.", jlpt: "N5", difficulty: 10 },
+  { id: "d7", kanji: "打ち合わせ", reading: "うちあわせ", meaning: "미팅, 사전 협의", example: "午後、打ち合わせがあります。", exampleKo: "오후에 미팅이 있습니다.", jlpt: "N2", difficulty: 70 },
+  { id: "d8", kanji: "締め切り", reading: "しめきり", meaning: "마감", example: "締め切りは金曜日です。", exampleKo: "마감은 금요일입니다.", jlpt: "N2", difficulty: 70 },
+  { id: "d9", kanji: "承認", reading: "しょうにん", meaning: "승인", example: "部長の承認が必要です。", exampleKo: "부장님의 승인이 필요합니다.", jlpt: "N2", difficulty: 70 },
+  { id: "d10", kanji: "提案", reading: "ていあん", meaning: "제안", example: "新しい提案をします。", exampleKo: "새로운 제안을 합니다.", jlpt: "N3", difficulty: 50 },
+  { id: "d11", kanji: "見積もり", reading: "みつもり", meaning: "견적", example: "見積もりを送ります。", exampleKo: "견적을 보내겠습니다.", jlpt: "전문용어", difficulty: 60 },
+  { id: "d12", kanji: "対応", reading: "たいおう", meaning: "대응, 처리", example: "すぐに対応します。", exampleKo: "즉시 대응하겠습니다.", jlpt: "N2", difficulty: 70 },
+  { id: "d13", kanji: "契約", reading: "けいやく", meaning: "계약", example: "契約書にサインしてください。", exampleKo: "계약서에 서명해 주세요.", jlpt: "N2", difficulty: 70 },
+  { id: "d14", kanji: "交渉", reading: "こうしょう", meaning: "협상", example: "価格を交渉します。", exampleKo: "가격을 협상합니다.", jlpt: "N1", difficulty: 90 },
+  { id: "d15", kanji: "稟議", reading: "りんぎ", meaning: "품의(결재)", example: "稟議書を作成します。", exampleKo: "품의서를 작성합니다.", jlpt: "전문용어", difficulty: 66 },
+  { id: "d16", kanji: "納期", reading: "のうき", meaning: "납기", example: "納期を守ってください。", exampleKo: "납기를 지켜 주세요.", jlpt: "전문용어", difficulty: 66 },
+  { id: "d17", kanji: "損益", reading: "そんえき", meaning: "손익", example: "損益を確認します。", exampleKo: "손익을 확인합니다.", jlpt: "N1", difficulty: 90 },
+  { id: "d18", kanji: "是正", reading: "ぜせい", meaning: "시정", example: "問題を是正します。", exampleKo: "문제를 시정합니다.", jlpt: "N1", difficulty: 90 }
 ];
 
 /* =========================================================
@@ -234,18 +224,13 @@ function shuffle(arr) {
   }
   return a;
 }
-function toast(msg, ms = 2600) {
+function toast(msg, ms = 2800) {
   const root = document.getElementById("toast-root");
-  const el = document.createElement("div");
-  el.className = "toast";
-  el.textContent = msg;
-  root.appendChild(el);
-  setTimeout(() => el.remove(), ms);
-}
-function el(html) {
-  const t = document.createElement("template");
-  t.innerHTML = html.trim();
-  return t.content.firstElementChild;
+  const elx = document.createElement("div");
+  elx.className = "toast";
+  elx.textContent = msg;
+  root.appendChild(elx);
+  setTimeout(() => elx.remove(), ms);
 }
 function kanjiRowHtml(word, size = 64) {
   const px = size;
@@ -254,9 +239,16 @@ function kanjiRowHtml(word, size = 64) {
     `<div class="kanji-cell" style="width:${px}px;height:${px}px;"><span style="font-size:${fontPx}px;">${escapeHtml(ch)}</span></div>`
   ).join("")}</div>`;
 }
+function progressLabel(unlocked) {
+  if (unlocked <= 20) return "N5 수준";
+  if (unlocked <= 40) return "N4 수준";
+  if (unlocked <= 60) return "N3 수준";
+  if (unlocked <= 80) return "N2 수준";
+  return "N1 수준";
+}
 
 /* =========================================================
-   3. TTS / 음성 인식
+   3. TTS
 ========================================================= */
 function speak(text) {
   if (!window.speechSynthesis) return;
@@ -269,56 +261,70 @@ function speak(text) {
   if (jaVoice) utter.voice = jaVoice;
   window.speechSynthesis.speak(utter);
 }
-let currentRecognizer = null;
-function listenPronunciation(onResult, onError, onStart, onEnd) {
+
+/* =========================================================
+   3-1. 발음 연습: SpeechRecognition 지원 시 자동 채점,
+   미지원(iOS Safari 등)이면 녹음+재생으로 자동 대체
+   -> iOS Safari는 SpeechRecognition을 지원하지 않아 "동작 안 함"으로 보였던 부분
+========================================================= */
+const SR_SUPPORTED = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+const MR_SUPPORTED = typeof window !== "undefined" && !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+function listenPronunciation(onResult, onError) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { onError("이 브라우저는 음성 인식을 지원하지 않아요. 크롬(Chrome) 브라우저를 사용해보세요."); return; }
   const rec = new SR();
   rec.lang = "ja-JP";
   rec.interimResults = false;
   rec.maxAlternatives = 5;
-  rec.onstart = () => onStart && onStart();
-  rec.onend = () => onEnd && onEnd();
   rec.onerror = (e) => onError("음성 인식 오류: " + e.error);
   rec.onresult = (e) => {
     const alts = [];
     for (let i = 0; i < e.results[0].length; i++) alts.push(e.results[0][i].transcript);
     onResult(alts);
   };
-  currentRecognizer = rec;
   rec.start();
 }
+
+let mediaRecorder = null, recordedChunks = [];
+async function startRecording(onReady, onError) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "audio/webm" });
+      onReady(URL.createObjectURL(blob));
+      stream.getTracks().forEach(t => t.stop());
+    };
+    mediaRecorder.start();
+  } catch (e) {
+    onError("마이크 권한이 필요해요. 브라우저 설정에서 마이크 접근을 허용해주세요.");
+  }
+}
+function stopRecording() { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); }
 
 /* =========================================================
    4. 전역 상태
 ========================================================= */
 const S = {
-  uid: null,
-  user: null,          // {empId, name, role, level}
+  uid: null, user: null,
   words: [...DEFAULT_WORDS],
-  wordStats: {},        // wordId -> {quizAttempts, quizCorrect, pronAttempts, pronScoreSum, handwritingCount}
-  progress: { streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0 },
-  team: [],             // leader 전용 요약 목록
-  roster: [],           // leader 전용 명단
-  tab: "study",
-  studyIdx: 0,
-  quiz: null
+  wordStats: {},
+  progress: { streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, unlocked: 20 },
+  team: [], roster: [],
+  tab: "study", studyIdx: 0, quiz: null
 };
 
 /* =========================================================
    5. 부트 / 로그인
 ========================================================= */
 auth.onAuthStateChanged(async (user) => {
-  if (!user) {
-    try { await auth.signInAnonymously(); } catch (e) { console.error(e); }
-    return;
-  }
+  if (!user) { try { await auth.signInAnonymously(); } catch (e) { console.error(e); } return; }
   S.uid = user.uid;
   const doc = await db.collection("users").doc(S.uid).get().catch(() => null);
-  if (doc && doc.exists) {
-    S.user = doc.data();
-    enterApp();
-  } else {
+  if (doc && doc.exists) { S.user = doc.data(); enterApp(); }
+  else {
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("login-screen").classList.remove("hidden");
   }
@@ -334,23 +340,20 @@ async function handleLogin() {
     const rosterDoc = await db.collection("roster").doc(empId).get();
     if (!rosterDoc.exists || rosterDoc.data().active === false) {
       errEl.textContent = "등록되지 않은 사번이거나 비활성화된 계정이에요. 관리자에게 문의해주세요.";
-      errEl.classList.remove("hidden");
-      return;
+      errEl.classList.remove("hidden"); return;
     }
     const rdata = rosterDoc.data();
     if (rdata.name.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
       errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
-      errEl.classList.remove("hidden");
-      return;
+      errEl.classList.remove("hidden"); return;
     }
-    const userDoc = {
-      empId, name: rdata.name, role: rdata.role || "member", level: "초급",
+    await db.collection("users").doc(S.uid).set({
+      empId, name: rdata.name, role: rdata.role || "member",
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastActive: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await db.collection("users").doc(S.uid).set(userDoc, { merge: true });
+    }, { merge: true });
     await db.collection("progress").doc(S.uid).set({
-      empId, name: rdata.name, streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, level: "초급"
+      empId, name: rdata.name, streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, unlocked: 20
     }, { merge: true });
     const doc = await db.collection("users").doc(S.uid).get();
     S.user = doc.data();
@@ -367,13 +370,23 @@ function enterApp() {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("user-greeting").textContent = S.user.name + "님의 일본어 노트";
-  renderLevelSelector();
   renderTabNav();
   setupListeners();
 }
+function expandRange() {
+  const next = Math.min(100, (S.progress.unlocked || 20) + 10);
+  db.collection("progress").doc(S.uid).set({ unlocked: next }, { merge: true });
+  toast("학습 범위를 넓혔어요.");
+}
+function renderProgressBadge() {
+  const u = S.progress.unlocked || 20;
+  document.getElementById("progress-label").textContent = progressLabel(u);
+  document.getElementById("progress-bar").style.width = u + "%";
+  document.getElementById("streak-num").textContent = S.progress.streak || 0;
+}
 
 /* =========================================================
-   6. Firestore 실시간 리스너
+   6. Firestore 리스너
 ========================================================= */
 function setupListeners() {
   db.collection("sharedWords").onSnapshot(snap => {
@@ -384,10 +397,7 @@ function setupListeners() {
   }, err => console.error("sharedWords listener", err));
 
   db.collection("progress").doc(S.uid).onSnapshot(doc => {
-    if (doc.exists) {
-      S.progress = doc.data();
-      document.getElementById("streak-num").textContent = S.progress.streak || 0;
-    }
+    if (doc.exists) { S.progress = { unlocked: 20, ...doc.data() }; renderProgressBadge(); }
   }, err => console.error("progress listener", err));
 
   db.collection("progress").doc(S.uid).collection("wordStats").onSnapshot(snap => {
@@ -400,11 +410,10 @@ function setupListeners() {
   if (S.user.role === "leader") {
     db.collection("progress").onSnapshot(snap => {
       const list = [];
-      snap.forEach(d => { if (d.id !== S.uid) list.push({ uid: d.id, ...d.data() }); else list.push({ uid: d.id, ...d.data() }); });
+      snap.forEach(d => list.push({ uid: d.id, ...d.data() }));
       S.team = list;
       if (S.tab === "team") renderTab();
     }, err => console.error("team listener", err));
-
     db.collection("roster").onSnapshot(snap => {
       const list = [];
       snap.forEach(d => list.push({ empId: d.id, ...d.data() }));
@@ -415,78 +424,52 @@ function setupListeners() {
 }
 
 /* =========================================================
-   7. 진도 업데이트 (스트릭 / 정답률)
+   7. 진도 업데이트 (스트릭 / 정답률 / 난이도 자동 상승)
 ========================================================= */
 async function markActivity({ quizPct } = {}) {
   const ref = db.collection("progress").doc(S.uid);
   await db.runTransaction(async (t) => {
     const doc = await t.get(ref);
     const data = doc.exists ? doc.data() : {};
-    const today = todayStr();
-    const yesterday = todayStr(-1);
+    const today = todayStr(); const yesterday = todayStr(-1);
     let streak = data.streak || 0;
     const last = data.lastStudyDate;
-    if (last === today) { /* 이미 오늘 카운트됨 */ }
+    if (last === today) { /* 이미 카운트됨 */ }
     else if (last === yesterday) { streak += 1; }
     else { streak = 1; }
     const patch = {
-      lastStudyDate: today, streak, level: S.user.level,
-      name: S.user.name, empId: S.user.empId,
+      lastStudyDate: today, streak, name: S.user.name, empId: S.user.empId,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+    let unlocked = data.unlocked || 20;
     if (typeof quizPct === "number") {
       patch.quizCount = (data.quizCount || 0) + 1;
       patch.quizAccSum = (data.quizAccSum || 0) + quizPct;
+      // 난이도 자동 상승: 성적이 좋으면 학습 가능 범위를 점차 넓힘 (버킷 대신 연속적으로)
+      if (quizPct >= 0.75) unlocked = Math.min(100, unlocked + 10);
+      else if (quizPct >= 0.5) unlocked = Math.min(100, unlocked + 4);
+      patch.unlocked = unlocked;
     }
     t.set(ref, patch, { merge: true });
   });
 }
 function bumpWordStat(wordId, patch) {
-  const ref = db.collection("progress").doc(S.uid).collection("wordStats").doc(wordId);
-  ref.set(patch, { merge: true }).catch(e => console.error(e));
-}
-function computeTier() {
-  const count = S.progress.quizCount || 0;
-  if (count < 3) return "beginner";
-  const acc = S.progress.quizAccSum / count;
-  if (acc >= 0.85) return "advanced";
-  if (acc >= 0.6) return "intermediate";
-  return "beginner";
+  db.collection("progress").doc(S.uid).collection("wordStats").doc(wordId).set(patch, { merge: true }).catch(e => console.error(e));
 }
 
 /* =========================================================
-   8. 레벨 선택 / 탭 네비게이션
+   8. 탭 네비게이션
 ========================================================= */
-function renderLevelSelector() {
-  const box = document.getElementById("level-selector");
-  box.innerHTML = LEVELS.map(lv =>
-    `<button class="level-btn ${S.user.level === lv ? "active" : ""}" onclick="setLevel('${lv}')">${lv}</button>`
-  ).join("");
-}
-async function setLevel(lv) {
-  S.user.level = lv;
-  renderLevelSelector();
-  await db.collection("users").doc(S.uid).set({ level: lv }, { merge: true });
-  renderTab();
-}
 function renderTabNav() {
   const tabs = [
-    { id: "study", label: "학습" },
-    { id: "quiz", label: "퀴즈" },
-    { id: "write", label: "쓰기연습" },
-    { id: "record", label: "기록" }
+    { id: "study", label: "학습" }, { id: "quiz", label: "퀴즈" },
+    { id: "write", label: "쓰기연습" }, { id: "record", label: "기록" }
   ];
-  if (S.user.role === "leader") {
-    tabs.push({ id: "team", label: "팀현황" });
-    tabs.push({ id: "admin", label: "관리" });
-  }
+  if (S.user.role === "leader") { tabs.push({ id: "team", label: "팀현황" }); tabs.push({ id: "admin", label: "관리" }); }
   const nav = document.getElementById("tab-nav");
-  nav.innerHTML = tabs.map(t =>
-    `<button class="tab-btn ${S.tab === t.id ? "active" : ""}" onclick="goTab('${t.id}')">${t.label}</button>`
-  ).join("");
+  nav.innerHTML = tabs.map(t => `<button class="tab-btn ${S.tab === t.id ? "active" : ""}" onclick="goTab('${t.id}')">${t.label}</button>`).join("");
 }
 function goTab(id) { S.tab = id; renderTabNav(); renderTab(); }
-
 function renderTab() {
   const c = document.getElementById("tab-content");
   if (S.tab === "study") return renderStudyTab(c);
@@ -498,19 +481,23 @@ function renderTab() {
 }
 
 /* =========================================================
-   9. 학습 탭
+   9. 학습 탭 (난이도 오름차순 정렬, 잠금 해제 범위 내에서만)
 ========================================================= */
-function levelWords() { return S.words.filter(w => w.level === S.user.level); }
+function unlockedWords() {
+  const ceil = S.progress.unlocked || 20;
+  return [...S.words].filter(w => (w.difficulty || 50) <= ceil).sort((a, b) => (a.difficulty || 50) - (b.difficulty || 50));
+}
+function emptyStateHtml() { return `<div class="card-soft"><p class="muted small">아직 학습 가능한 단어가 없어요. 관리 탭에서 단어를 등록해보세요.</p></div>`; }
 
 function renderStudyTab(c) {
-  const words = levelWords();
+  const words = unlockedWords();
   if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
   if (S.studyIdx >= words.length) S.studyIdx = 0;
   const w = words[S.studyIdx];
   c.innerHTML = `
     <div class="rowbetween small muted" style="margin-bottom:10px;">
       <span>${S.studyIdx + 1} / ${words.length}</span>
-      <span style="color:var(--hanko);font-weight:700;">${w.level}</span>
+      <span class="jlpt-tag">${escapeHtml(w.jlpt || "")}</span>
     </div>
     <div class="card">
       ${kanjiRowHtml(w.kanji, 68)}
@@ -532,7 +519,7 @@ function renderStudyTab(c) {
   window.__currentStudyWord = w;
 }
 function studyNav(d) {
-  const words = levelWords();
+  const words = unlockedWords();
   S.studyIdx = (S.studyIdx + d + words.length) % words.length;
   renderStudyTab(document.getElementById("tab-content"));
 }
@@ -542,50 +529,82 @@ function revealWord() {
     <p style="color:var(--hanko);font-family:'Noto Serif JP',serif;font-size:18px;font-weight:700;margin:0;">${escapeHtml(w.reading)}</p>
     <p style="font-size:20px;font-weight:700;margin:4px 0 0;">${escapeHtml(w.meaning)}</p>
     <div class="dashed-top" style="text-align:left;">
-      <p style="margin:0;">${escapeHtml(w.example)}</p>
-      <p class="muted" style="margin:4px 0 0;">${escapeHtml(w.exampleKo)}</p>
+      <p style="margin:0;">${escapeHtml(w.example || "")}</p>
+      <p class="muted" style="margin:4px 0 0;">${escapeHtml(w.exampleKo || "")}</p>
     </div>
   `;
 }
+
+/* 발음 연습: SpeechRecognition 지원되면 자동 채점, 아니면 녹음+재생 (iOS 등) */
 function practicePron(wordId, reading, kanji) {
   const resultBox = document.getElementById("pron-result");
-  resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">듣고 있어요...</p>`;
-  listenPronunciation(
-    (alts) => {
-      let best = 0;
-      alts.forEach(a => { best = Math.max(best, similarity(a, reading), similarity(a, kanji)); });
+  if (SR_SUPPORTED) {
+    resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">듣고 있어요...</p>`;
+    listenPronunciation(
+      (alts) => {
+        let best = 0;
+        alts.forEach(a => { best = Math.max(best, similarity(a, reading), similarity(a, kanji)); });
+        const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0 };
+        bumpWordStat(wordId, { pronAttempts: cur.pronAttempts + 1, pronScoreSum: cur.pronScoreSum + best });
+        const color = best >= 85 ? "var(--sage)" : best >= 60 ? "var(--amber)" : "var(--hanko)";
+        const msg = best >= 85 ? "아주 좋아요! 발음이 정확해요 👏" : best >= 60 ? "괜찮아요! 조금만 더 또렷하게 발음해보세요." : "다시 한 번 천천히 발음해볼까요?";
+        resultBox.innerHTML = `
+          <div class="scorebar" style="margin-top:14px;"><div style="width:${best}%;background:${color};"></div></div>
+          <p class="small center" style="color:${color};font-weight:700;margin-top:4px;">발음 정확도 ${best}%</p>
+          <p class="muted small center">${msg}</p>
+        `;
+      },
+      (errMsg) => { resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">${escapeHtml(errMsg)}</p>`; }
+    );
+    return;
+  }
+  if (!MR_SUPPORTED) {
+    resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">이 브라우저에서는 발음 연습 기능을 사용할 수 없어요.</p>`;
+    return;
+  }
+  // iOS Safari 등 SpeechRecognition 미지원 브라우저: 녹음 후 재생하여 스스로 비교
+  resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">🔴 녹음 중... (버튼을 다시 누르면 정지)</p>`;
+  const pronBtn = document.getElementById("pron-btn");
+  pronBtn.onclick = () => {
+    stopRecording();
+    pronBtn.onclick = () => practicePron(wordId, reading, kanji);
+  };
+  startRecording(
+    (audioUrl) => {
       const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0 };
-      bumpWordStat(wordId, { pronAttempts: cur.pronAttempts + 1, pronScoreSum: cur.pronScoreSum + best });
-      const color = best >= 85 ? "var(--sage)" : best >= 60 ? "var(--amber)" : "var(--hanko)";
-      const msg = best >= 85 ? "아주 좋아요! 발음이 정확해요 👏" : best >= 60 ? "괜찮아요! 조금만 더 또렷하게 발음해보세요." : "다시 한 번 천천히 발음해볼까요?";
+      bumpWordStat(wordId, { pronAttempts: cur.pronAttempts + 1 });
       resultBox.innerHTML = `
-        <div class="scorebar" style="margin-top:14px;"><div style="width:${best}%;background:${color};"></div></div>
-        <p class="small center" style="color:${color};font-weight:700;margin-top:4px;">발음 정확도 ${best}%</p>
-        <p class="muted small center">${msg}</p>
+        <p class="muted small center" style="margin-top:10px;">이 브라우저(iOS Safari 등)는 자동 발음 채점을 지원하지 않아요.<br/>녹음한 내 발음과 정확한 발음을 번갈아 들으며 비교해보세요.</p>
+        <audio controls src="${audioUrl}"></audio>
+        <div class="rowbetween" style="margin-top:8px;gap:8px;">
+          <button class="btn-ghost" style="flex:1;" onclick="speak('${escapeHtml(kanji)}')">🔊 정확한 발음 듣기</button>
+          <button class="btn-sage" style="flex:1;" onclick="toast('발음 연습을 기록했어요!')">비교 완료</button>
+        </div>
       `;
     },
-    (errMsg) => { resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">${escapeHtml(errMsg)}</p>`; },
-    () => {}, () => {}
+    (errMsg) => { resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">${escapeHtml(errMsg)}</p>`; }
   );
-}
-function emptyStateHtml() {
-  return `<div class="card-soft"><p class="muted small">이 레벨에는 아직 단어가 없어요. 관리 탭에서 단어를 추가해보세요.</p></div>`;
 }
 
 /* =========================================================
-   10. 퀴즈 탭 (난이도 적응형)
+   10. 퀴즈 탭 (unlocked 범위 기반, 자동 난이도 상승)
 ========================================================= */
-function buildQuiz(words, tier, count = 8) {
+function computeTypingRate() {
+  const u = S.progress.unlocked || 20;
+  if (u < 40) return 0;
+  if (u < 70) return 0.3;
+  return 0.65;
+}
+function buildQuiz(words, count = 8) {
   const pool = words.length ? words : DEFAULT_WORDS;
-  const typingRate = tier === "advanced" ? 0.7 : tier === "intermediate" ? 0.3 : 0;
+  const typingRate = computeTypingRate();
   const questions = [];
   for (let i = 0; i < count; i++) {
     const w = pool[Math.floor(Math.random() * pool.length)];
     const isTyping = Math.random() < typingRate;
     const qType = Math.random() > 0.5 ? "meaning" : "reading";
-    if (isTyping) {
-      questions.push({ word: w, mode: "typing", qType });
-    } else {
+    if (isTyping) { questions.push({ word: w, mode: "typing", qType }); }
+    else {
       const distractors = shuffle(pool.filter(x => x.id !== w.id)).slice(0, 3);
       questions.push({ word: w, mode: "choice", qType, options: shuffle([w, ...distractors]) });
     }
@@ -593,46 +612,41 @@ function buildQuiz(words, tier, count = 8) {
   return questions;
 }
 function renderQuizTab(c) {
-  const words = levelWords();
+  const words = unlockedWords();
   if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
-  if (!S.quiz || S.quiz.finished === undefined) {
+  if (!S.quiz) {
     c.innerHTML = `
       <div class="card-soft">
-        <p style="font-weight:700;margin:0 0 4px;">${S.user.level} 레벨 퀴즈 (8문제)</p>
-        <p class="muted small" style="margin:0 0 18px;">현재 실력에 맞춰 객관식/직접입력 문제가 섞여 나와요.</p>
+        <p style="font-weight:700;margin:0 0 4px;">${progressLabel(S.progress.unlocked || 20)} 맞춤 퀴즈 (8문제)</p>
+        <p class="muted small" style="margin:0 0 18px;">현재까지 학습 가능 범위(${words.length}개 단어) 안에서 출제돼요. 정답률이 좋으면 범위가 자동으로 넓어져요.</p>
         <button class="btn-main" onclick="startQuiz()">퀴즈 시작하기</button>
       </div>`;
     return;
   }
-  const q = S.quiz.questions[S.quiz.idx];
   if (S.quiz.idx >= S.quiz.questions.length) return renderQuizResult(c);
-
+  const q = S.quiz.questions[S.quiz.idx];
   let bodyHtml = "";
   if (q.mode === "choice") {
     bodyHtml = q.options.map(opt => {
       let cls = "";
-      if (S.quiz.selected) {
-        if (opt.id === q.word.id) cls = "correct";
-        else if (S.quiz.selected.id === opt.id) cls = "wrong";
-      }
+      if (S.quiz.selected) { if (opt.id === q.word.id) cls = "correct"; else if (S.quiz.selected.id === opt.id) cls = "wrong"; }
       const label = q.qType === "meaning" ? opt.meaning : opt.reading;
       return `<button class="quiz-opt ${cls}" onclick="chooseQuizOption('${opt.id}')" ${S.quiz.selected ? "disabled" : ""}>${escapeHtml(label)}</button>`;
     }).join("");
   } else {
     bodyHtml = `
-      <input id="typing-input" class="field-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
+      <input id="typing-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
         placeholder="${q.qType === "meaning" ? "한국어 뜻을 입력하세요" : "히라가나로 읽는 법을 입력하세요"}" ${S.quiz.selected ? "disabled" : ""} />
       <button class="btn-main" style="width:100%;margin-top:10px;" onclick="submitTyping()" ${S.quiz.selected ? "disabled" : ""}>제출</button>
     `;
   }
-
   c.innerHTML = `
     <div class="rowbetween small muted" style="margin-bottom:10px;">
-      <span>${S.quiz.idx + 1} / ${S.quiz.questions.length}</span>
-      <span>점수 ${S.quiz.score}</span>
+      <span>${S.quiz.idx + 1} / ${S.quiz.questions.length}</span><span>점수 ${S.quiz.score}</span>
     </div>
     <div class="card">
-      <p class="muted small" style="font-weight:700;margin:0 0 8px;">${q.qType === "meaning" ? "이 단어의 뜻은?" : "이 단어의 읽는 법은?"}${q.mode === "typing" ? " (직접 입력)" : ""}</p>
+      <p class="muted small" style="font-weight:700;margin:0 0 8px;">${q.qType === "meaning" ? "이 단어의 뜻은?" : "이 단어의 읽는 법은?"}${q.mode === "typing" ? " (직접 입력)" : ""}
+        <span class="jlpt-tag" style="margin-left:6px;">${escapeHtml(q.word.jlpt || "")}</span></p>
       ${kanjiRowHtml(q.word.kanji, 56)}
       ${bodyHtml}
       <div id="quiz-feedback"></div>
@@ -640,9 +654,7 @@ function renderQuizTab(c) {
   `;
 }
 function startQuiz() {
-  const words = levelWords();
-  const tier = computeTier();
-  S.quiz = { questions: buildQuiz(words, tier, 8), idx: 0, score: 0, selected: null };
+  S.quiz = { questions: buildQuiz(unlockedWords(), 8), idx: 0, score: 0, selected: null };
   renderQuizTab(document.getElementById("tab-content"));
 }
 function chooseQuizOption(optId) {
@@ -676,32 +688,25 @@ function appendQuizFeedback(q, typingCorrect, typingTarget) {
   const isLast = S.quiz.idx + 1 >= S.quiz.questions.length;
   let fb = "";
   if (typeof typingCorrect === "boolean") {
-    fb = typingCorrect
-      ? `<p style="color:var(--sage);font-weight:700;">정답이에요! ✅</p>`
-      : `<p style="color:var(--hanko);font-weight:700;">아쉬워요. 정답: ${escapeHtml(typingTarget)}</p>`;
+    fb = typingCorrect ? `<p style="color:var(--sage);font-weight:700;">정답이에요! ✅</p>` : `<p style="color:var(--hanko);font-weight:700;">아쉬워요. 정답: ${escapeHtml(typingTarget)}</p>`;
   }
   box.innerHTML = `
     ${fb}
     <div class="dashed-top">
-      <p style="margin:0;">${escapeHtml(q.word.example)}</p>
-      <p class="muted" style="margin:4px 0 0;">${escapeHtml(q.word.exampleKo)}</p>
+      <p style="margin:0;">${escapeHtml(q.word.example || "")}</p>
+      <p class="muted" style="margin:4px 0 0;">${escapeHtml(q.word.exampleKo || "")}</p>
       <button class="btn-main" style="width:100%;margin-top:12px;" onclick="nextQuizQ()">${isLast ? "결과 보기" : "다음 문제"}</button>
     </div>
   `;
 }
 function nextQuizQ() {
-  S.quiz.idx++;
-  S.quiz.selected = null;
+  S.quiz.idx++; S.quiz.selected = null;
   if (S.quiz.idx >= S.quiz.questions.length) {
-    S.quiz.finished = true;
     const pct = S.quiz.score / S.quiz.questions.length;
+    const prevUnlocked = S.progress.unlocked || 20;
     markActivity({ quizPct: pct }).then(() => {
-      const prevTier = computeTier();
       setTimeout(() => {
-        const newTier = computeTier();
-        if (newTier === "advanced" && prevTier !== "advanced") {
-          toast("실력이 많이 늘었어요! 다음 레벨에도 도전해보세요 🎉");
-        }
+        if ((S.progress.unlocked || 20) > prevUnlocked) toast("실력이 늘어서 학습 범위가 넓어졌어요! 🎉");
       }, 500);
     });
   }
@@ -720,18 +725,17 @@ function renderQuizResult(c) {
 }
 
 /* =========================================================
-   11. 쓰기 연습 탭 (캔버스)
+   11. 쓰기 연습 탭
 ========================================================= */
 let drawing = false, canvasCtx = null;
 function renderWriteTab(c) {
-  const words = levelWords();
+  const words = unlockedWords();
   if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
   if (S.studyIdx >= words.length) S.studyIdx = 0;
   const w = words[S.studyIdx];
   c.innerHTML = `
     <div class="rowbetween small muted" style="margin-bottom:10px;">
-      <span>${S.studyIdx + 1} / ${words.length}</span>
-      <span>${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span>
+      <span>${S.studyIdx + 1} / ${words.length}</span><span>${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span>
     </div>
     <div class="canvas-wrap">
       <div class="canvas-guide">${escapeHtml(w.kanji[0] || "")}</div>
@@ -753,7 +757,7 @@ function renderWriteTab(c) {
   setupCanvas();
 }
 function writeNav(d) {
-  const words = levelWords();
+  const words = unlockedWords();
   S.studyIdx = (S.studyIdx + d + words.length) % words.length;
   renderWriteTab(document.getElementById("tab-content"));
 }
@@ -761,34 +765,16 @@ function setupCanvas() {
   const canvas = document.getElementById("write-canvas");
   if (!canvas) return;
   canvasCtx = canvas.getContext("2d");
-  canvasCtx.lineWidth = 6;
-  canvasCtx.lineCap = "round";
-  canvasCtx.strokeStyle = "#1E2A38";
+  canvasCtx.lineWidth = 6; canvasCtx.lineCap = "round"; canvasCtx.strokeStyle = "#1E2A38";
   let last = null;
-  const pos = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const p = e.touches ? e.touches[0] : e;
-    return { x: p.clientX - rect.left, y: p.clientY - rect.top };
-  };
+  const pos = (e) => { const rect = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - rect.left, y: p.clientY - rect.top }; };
   const start = (e) => { drawing = true; last = pos(e); e.preventDefault(); };
-  const move = (e) => {
-    if (!drawing) return;
-    const p = pos(e);
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(last.x, last.y);
-    canvasCtx.lineTo(p.x, p.y);
-    canvasCtx.stroke();
-    last = p;
-    e.preventDefault();
-  };
+  const move = (e) => { if (!drawing) return; const p = pos(e); canvasCtx.beginPath(); canvasCtx.moveTo(last.x, last.y); canvasCtx.lineTo(p.x, p.y); canvasCtx.stroke(); last = p; e.preventDefault(); };
   const end = () => { drawing = false; };
   canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
   canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
 }
-function clearCanvas() {
-  const canvas = document.getElementById("write-canvas");
-  if (canvasCtx && canvas) canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-}
+function clearCanvas() { const canvas = document.getElementById("write-canvas"); if (canvasCtx && canvas) canvasCtx.clearRect(0, 0, canvas.width, canvas.height); }
 function finishWriting(wordId, ok) {
   const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0, handwritingCount: 0 };
   bumpWordStat(wordId, { handwritingCount: (cur.handwritingCount || 0) + 1 });
@@ -797,42 +783,30 @@ function finishWriting(wordId, ok) {
 }
 
 /* =========================================================
-   12. 기록 탭 (개인)
+   12. 기록 탭
 ========================================================= */
 function renderRecordTab(c) {
-  const days = Array.from({ length: 28 }, (_, i) => todayStr(-(27 - i)));
   const acc = S.progress.quizCount ? Math.round((S.progress.quizAccSum / S.progress.quizCount) * 100) : 0;
   const weak = Object.entries(S.wordStats)
     .map(([id, s]) => {
       const w = S.words.find(x => x.id === id) || DEFAULT_WORDS.find(x => x.id === id);
-      if (!w) return null;
-      if (!s.quizAttempts && !s.pronAttempts) return null;
+      if (!w || (!s.quizAttempts && !s.pronAttempts)) return null;
       const quizAcc = s.quizAttempts ? s.quizCorrect / s.quizAttempts : 1;
-      const pronAcc = s.pronAttempts ? (s.pronScoreSum / s.pronAttempts) / 100 : 1;
+      const pronAcc = s.pronAttempts ? (s.pronScoreSum || 0) / s.pronAttempts / 100 : 1;
       return { ...w, combined: (quizAcc + pronAcc) / 2 };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.combined - b.combined)
-    .slice(0, 5);
+    }).filter(Boolean).sort((a, b) => a.combined - b.combined).slice(0, 5);
 
   c.innerHTML = `
     <div class="card" style="margin-bottom:16px;">
       <div class="rowbetween" style="margin-bottom:10px;">
-        <p style="font-weight:700;margin:0;">지난 28일 학습 도장</p>
-        <span style="color:var(--hanko);font-weight:700;">🔥 ${S.progress.streak || 0}일 연속</span>
+        <p style="font-weight:700;margin:0;">연속 학습</p><span style="color:var(--hanko);font-weight:700;">🔥 ${S.progress.streak || 0}일</span>
       </div>
-      <div class="stampgrid">
-        ${days.map(d => {
-          const done = d === S.progress.lastStudyDate || (d < todayStr() && isPastStudyDay(d));
-          return `<div class="stampcell ${d === S.progress.lastStudyDate ? "done" : ""}" title="${d}">${d === S.progress.lastStudyDate ? "済" : ""}</div>`;
-        }).join("")}
-      </div>
-      <p class="muted small" style="margin-top:8px;">※ 오늘 도장만 실시간 표시돼요. 지난 기록 전체는 추후 상세 로그로 확장할 수 있어요.</p>
+      <p class="muted small">오늘까지 학습하면 기록이 이어져요. 하루라도 쉬면 처음부터 다시 세어요.</p>
     </div>
     <div class="card" style="margin-bottom:16px;">
-      <p style="font-weight:700;margin:0 0 6px;">전체 퀴즈 정답률</p>
-      <p style="font-size:26px;font-weight:700;color:var(--hanko);margin:0;">${acc}%</p>
-      <p class="muted small">누적 ${S.progress.quizCount || 0}회 응시 · 현재 실력 단계: ${tierLabel(computeTier())}</p>
+      <p style="font-weight:700;margin:0 0 6px;">현재 학습 범위</p>
+      <p style="font-size:22px;font-weight:700;color:var(--hanko);margin:0;">${progressLabel(S.progress.unlocked || 20)}</p>
+      <p class="muted small">전체 퀴즈 정답률 ${acc}% (누적 ${S.progress.quizCount || 0}회) · 학습 가능 단어 ${unlockedWords().length}개</p>
     </div>
     <div class="card">
       <p style="font-weight:700;margin:0 0 10px;">더 연습이 필요한 단어</p>
@@ -844,8 +818,6 @@ function renderRecordTab(c) {
     </div>
   `;
 }
-function isPastStudyDay() { return false; }
-function tierLabel(t) { return t === "advanced" ? "심화(고급형 문제)" : t === "intermediate" ? "중급(혼합형 문제)" : "기초(객관식 위주)"; }
 
 /* =========================================================
    13. 팀 현황 탭 (leader)
@@ -861,7 +833,7 @@ function renderTeamTab(c) {
     </div>
     <div class="card">
       <table class="team">
-        <thead><tr><th>이름</th><th>레벨</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
+        <thead><tr><th>이름</th><th>범위</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
         <tbody id="team-rows"></tbody>
       </table>
     </div>
@@ -871,8 +843,7 @@ function renderTeamTab(c) {
 function renderTeamRows() {
   const q = (document.getElementById("team-search")?.value || "").trim().toLowerCase();
   const today = todayStr();
-  const rows = [...S.team]
-    .filter(r => !q || (r.name || "").toLowerCase().includes(q) || (r.empId || "").toLowerCase().includes(q))
+  const rows = [...S.team].filter(r => !q || (r.name || "").toLowerCase().includes(q) || (r.empId || "").toLowerCase().includes(q))
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
   const body = document.getElementById("team-rows");
   if (!body) return;
@@ -882,10 +853,9 @@ function renderTeamRows() {
     return `
       <tr onclick="toggleTeamDetail('${r.uid}')" style="cursor:pointer;">
         <td>${escapeHtml(r.name || "-")} <span class="muted small">(${escapeHtml(r.empId || "")})</span></td>
-        <td>${escapeHtml(r.level || "초급")}</td>
+        <td>${progressLabel(r.unlocked || 20)}</td>
         <td class="${studied ? "badge-ok" : "badge-no"}">${studied ? "완료" : "-"}</td>
-        <td>${r.streak || 0}일</td>
-        <td>${acc}%</td>
+        <td>${r.streak || 0}일</td><td>${acc}%</td>
       </tr>
       <tr id="detail-${r.uid}" class="hidden"><td colspan="5"><div class="row-detail" id="detail-body-${r.uid}"></div></td></tr>
     `;
@@ -903,22 +873,19 @@ function toggleTeamDetail(uid) {
     db.collection("progress").doc(uid).collection("wordStats").get().then(snap => {
       const stats = [];
       snap.forEach(d => stats.push({ id: d.id, ...d.data() }));
-      const weak = stats
-        .map(s => {
-          const w = S.words.find(x => x.id === s.id) || DEFAULT_WORDS.find(x => x.id === s.id);
-          if (!w) return null;
-          const quizAcc = s.quizAttempts ? s.quizCorrect / s.quizAttempts : 1;
-          return { ...w, acc: Math.round(quizAcc * 100) };
-        }).filter(Boolean).sort((a, b) => a.acc - b.acc).slice(0, 5);
-      body.innerHTML = weak.length
-        ? "취약 단어: " + weak.map(w => `${escapeHtml(w.kanji)}(${w.acc}%)`).join(", ")
-        : "아직 퀴즈 기록이 없어요.";
+      const weak = stats.map(s => {
+        const w = S.words.find(x => x.id === s.id) || DEFAULT_WORDS.find(x => x.id === s.id);
+        if (!w) return null;
+        const quizAcc = s.quizAttempts ? s.quizCorrect / s.quizAttempts : 1;
+        return { ...w, acc: Math.round(quizAcc * 100) };
+      }).filter(Boolean).sort((a, b) => a.acc - b.acc).slice(0, 5);
+      body.innerHTML = weak.length ? "취약 단어: " + weak.map(w => `${escapeHtml(w.kanji)}(${w.acc}%)`).join(", ") : "아직 퀴즈 기록이 없어요.";
     });
   }
 }
 
 /* =========================================================
-   14. 관리 탭 (leader: 팀원 등록 + 단어 관리)
+   14. 관리 탭
 ========================================================= */
 function renderAdminTab(c) {
   c.innerHTML = `
@@ -935,9 +902,9 @@ function renderAdminTab(c) {
       <div id="roster-list" style="margin-top:10px;max-height:280px;overflow:auto;"></div>
     </div>
     <div class="card" style="margin-bottom:18px;">
-      <p style="font-weight:700;margin:0 0 8px;">단어 일괄 등록</p>
-      <p class="muted small">한 줄에 "단어(한자/가나),읽는법,뜻,난이도" 형식으로 입력하세요. 난이도를 생략하면 초급으로 등록돼요.<br/>예) 会議,かいぎ,회의,초급</p>
-      <div class="field"><textarea id="word-bulk" placeholder="業務,ぎょうむ,업무,초급&#10;会議,かいぎ,회의,초급"></textarea></div>
+      <p style="font-weight:700;margin:0 0 8px;">단어 일괄 등록 (JLPT 난이도 포함)</p>
+      <p class="muted small">형식: <code>단어|읽는법|뜻|JLPT등급|난이도(1~100)|예문|예문해석</code><br/>예) 会議|かいぎ|회의|N4|30|明日、会議があります。|내일 회의가 있습니다.</p>
+      <div class="field"><textarea id="word-bulk" placeholder="会議|かいぎ|회의|N4|30|明日、会議があります。|내일 회의가 있습니다."></textarea></div>
       <button class="btn-hanko" style="width:100%;margin-top:10px;" onclick="bulkAddWords()">일괄 등록</button>
       <p id="word-bulk-msg" class="muted small" style="margin-top:6px;"></p>
     </div>
@@ -952,38 +919,32 @@ function renderAdminTab(c) {
         <div class="field"><label>뜻</label><input id="w-meaning" /></div>
         <div class="field"><label>예문(일본어)</label><input id="w-example" /></div>
         <div class="field"><label>예문 해석</label><input id="w-examplekr" /></div>
-        <div class="field">
-          <label>난이도</label>
-          <div class="levels" id="w-level-picker">
-            ${LEVELS.map(lv => `<button type="button" class="level-btn" data-lv="${lv}" onclick="pickWordLevel('${lv}')">${lv}</button>`).join("")}
+        <div class="grid2">
+          <div class="field"><label>JLPT 등급</label>
+            <select id="w-jlpt" onchange="document.getElementById('w-difficulty').value = ({N5:10,N4:30,N3:50,N2:70,N1:90,'전문용어':60})[this.value]">
+              ${JLPT_LABELS.map(l => `<option value="${l}">${l}</option>`).join("")}
+            </select>
           </div>
+          <div class="field"><label>난이도 (1~100, 낮을수록 먼저 학습)</label><input id="w-difficulty" type="number" min="1" max="100" value="30" /></div>
         </div>
         <button class="btn-hanko" style="width:100%;margin-top:12px;" onclick="addSharedWord()">단어 추가</button>
       </div>
       <div class="dashed-top" id="shared-word-list"></div>
     </div>
   `;
-  window.__newWordLevel = "초급";
-  document.querySelector('#w-level-picker [data-lv="초급"]').classList.add("active");
   renderRosterList();
   renderSharedWordList();
-}
-function pickWordLevel(lv) {
-  window.__newWordLevel = lv;
-  document.querySelectorAll('#w-level-picker .level-btn').forEach(b => b.classList.toggle("active", b.dataset.lv === lv));
 }
 async function bulkAddRoster() {
   const raw = document.getElementById("roster-bulk").value;
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
   const msg = document.getElementById("roster-msg");
   if (!lines.length) { msg.textContent = "입력된 내용이 없어요."; return; }
-  let batch = db.batch();
-  let count = 0, batchCount = 0;
+  let batch = db.batch(); let count = 0, batchCount = 0;
   for (const line of lines) {
     const [empId, name] = line.split(",").map(s => (s || "").trim());
     if (!empId || !name) continue;
-    const ref = db.collection("roster").doc(empId);
-    batch.set(ref, { name, role: "member", active: true }, { merge: true });
+    batch.set(db.collection("roster").doc(empId), { name, role: "member", active: true }, { merge: true });
     count++; batchCount++;
     if (batchCount >= 400) { await batch.commit(); batch = db.batch(); batchCount = 0; }
   }
@@ -1013,10 +974,7 @@ function loadDefaultWords() {
   db.collection("sharedWords").limit(1).get().then(snap => {
     if (!snap.empty) { toast("이미 단어가 등록되어 있어요."); return; }
     let batch = db.batch();
-    DEFAULT_WORDS.forEach(w => {
-      const { id, ...rest } = w;
-      batch.set(db.collection("sharedWords").doc(id), rest);
-    });
+    DEFAULT_WORDS.forEach(w => { const { id, ...rest } = w; batch.set(db.collection("sharedWords").doc(id), rest); });
     batch.commit().then(() => toast("기본 단어 18개를 불러왔어요."));
   });
 }
@@ -1025,15 +983,17 @@ async function bulkAddWords() {
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
   const msg = document.getElementById("word-bulk-msg");
   if (!lines.length) { msg.textContent = "입력된 내용이 없어요."; return; }
-  let batch = db.batch();
-  let count = 0, batchCount = 0;
+  let batch = db.batch(); let count = 0, batchCount = 0;
   for (const line of lines) {
-    const parts = line.split(",").map(s => (s || "").trim());
-    const [kanji, reading, meaning, level] = parts;
+    const parts = line.split("|").map(s => (s || "").trim());
+    const [kanji, reading, meaning, jlpt, difficulty, example, exampleKo] = parts;
     if (!kanji || !reading || !meaning) continue;
-    const lv = LEVELS.includes(level) ? level : "초급";
-    const ref = db.collection("sharedWords").doc();
-    batch.set(ref, { kanji, reading, meaning, example: "", exampleKo: "", level: lv });
+    const lvl = JLPT_LABELS.includes(jlpt) ? jlpt : "전문용어";
+    const diff = Number(difficulty) || JLPT_DIFF[lvl] || 50;
+    batch.set(db.collection("sharedWords").doc(), {
+      kanji, reading, meaning, jlpt: lvl, difficulty: diff,
+      example: example || "", exampleKo: exampleKo || ""
+    });
     count++; batchCount++;
     if (batchCount >= 400) { await batch.commit(); batch = db.batch(); batchCount = 0; }
   }
@@ -1047,12 +1007,13 @@ function addSharedWord() {
   const meaning = document.getElementById("w-meaning").value.trim();
   const example = document.getElementById("w-example").value.trim();
   const exampleKo = document.getElementById("w-examplekr").value.trim();
+  const jlpt = document.getElementById("w-jlpt").value;
+  const difficulty = Number(document.getElementById("w-difficulty").value) || 50;
   if (!kanji || !reading || !meaning) { toast("단어, 읽는 법, 뜻은 필수예요."); return; }
-  db.collection("sharedWords").add({ kanji, reading, meaning, example, exampleKo, level: window.__newWordLevel })
-    .then(() => {
-      ["w-kanji", "w-reading", "w-meaning", "w-example", "w-examplekr"].forEach(id => document.getElementById(id).value = "");
-      toast("단어를 추가했어요.");
-    });
+  db.collection("sharedWords").add({ kanji, reading, meaning, example, exampleKo, jlpt, difficulty }).then(() => {
+    ["w-kanji", "w-reading", "w-meaning", "w-example", "w-examplekr"].forEach(id => document.getElementById(id).value = "");
+    toast("단어를 추가했어요.");
+  });
 }
 function renderSharedWordList() {
   const box = document.getElementById("shared-word-list");
@@ -1060,7 +1021,7 @@ function renderSharedWordList() {
   box.innerHTML = `
     <div class="rowbetween small" style="margin:10px 0;">
       <span class="muted">등록된 단어 (${S.words.length}개)</span>
-      <input id="shared-word-search" placeholder="검색" style="width:120px;padding:4px 6px;border:1px solid var(--washi-dark);border-radius:3px;font-size:12px;" oninput="renderSharedWordList()" />
+      <input id="shared-word-search" placeholder="검색" style="width:120px;padding:4px 6px;border:1px solid var(--washi-dark);border-radius:3px;font-size:12px;" oninput="renderSharedWordRows()" />
     </div>
     <div id="shared-word-rows"></div>
   `;
@@ -1070,20 +1031,24 @@ function renderSharedWordRows() {
   const rows = document.getElementById("shared-word-rows");
   if (!rows) return;
   const q = (document.getElementById("shared-word-search")?.value || "").trim().toLowerCase();
-  const list = S.words.filter(w => !q || w.kanji.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q) || w.reading.toLowerCase().includes(q));
+  const list = [...S.words].filter(w => !q || w.kanji.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q) || w.reading.toLowerCase().includes(q))
+    .sort((a, b) => (a.difficulty || 50) - (b.difficulty || 50));
   rows.innerHTML = list.map(w => `
     <div class="rowbetween small" style="padding:5px 0;border-bottom:1px solid var(--washi-dark);">
       <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span></span>
       <span style="display:flex;gap:6px;align-items:center;">
-        <select onchange="updateWordLevel('${w.id}', this.value)" style="font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;">
-          ${LEVELS.map(lv => `<option value="${lv}" ${w.level === lv ? "selected" : ""}>${lv}</option>`).join("")}
+        <select onchange="updateWordJlpt('${w.id}', this.value)" style="font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;">
+          ${JLPT_LABELS.map(l => `<option value="${l}" ${w.jlpt === l ? "selected" : ""}>${l}</option>`).join("")}
         </select>
+        <input type="number" value="${w.difficulty || 50}" min="1" max="100" style="width:48px;font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;"
+          onchange="updateWordDifficulty('${w.id}', this.value)" />
         <button class="btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="deleteSharedWord('${w.id}')">삭제</button>
       </span>
     </div>
   `).join("");
 }
-function updateWordLevel(id, level) { db.collection("sharedWords").doc(id).set({ level }, { merge: true }); }
+function updateWordJlpt(id, jlpt) { db.collection("sharedWords").doc(id).set({ jlpt }, { merge: true }); }
+function updateWordDifficulty(id, difficulty) { db.collection("sharedWords").doc(id).set({ difficulty: Number(difficulty) || 50 }, { merge: true }); }
 function deleteSharedWord(id) { db.collection("sharedWords").doc(id).delete(); }
 </script>
 </body>
