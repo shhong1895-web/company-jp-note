@@ -380,7 +380,7 @@ function setupListeners() {
     const custom = [];
     snap.forEach(d => custom.push({ id: d.id, ...d.data() }));
     S.words = custom.length ? custom : [...DEFAULT_WORDS];
-    if (S.tab === "study" || S.tab === "quiz" || S.tab === "write") renderTab();
+    if (["study", "quiz", "write", "admin"].includes(S.tab)) renderTab();
   }, err => console.error("sharedWords listener", err));
 
   db.collection("progress").doc(S.uid).onSnapshot(doc => {
@@ -934,6 +934,13 @@ function renderAdminTab(c) {
       <input id="roster-search" placeholder="검색" style="width:100%;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderRosterList()" />
       <div id="roster-list" style="margin-top:10px;max-height:280px;overflow:auto;"></div>
     </div>
+    <div class="card" style="margin-bottom:18px;">
+      <p style="font-weight:700;margin:0 0 8px;">단어 일괄 등록</p>
+      <p class="muted small">한 줄에 "단어(한자/가나),읽는법,뜻,난이도" 형식으로 입력하세요. 난이도를 생략하면 초급으로 등록돼요.<br/>예) 会議,かいぎ,회의,초급</p>
+      <div class="field"><textarea id="word-bulk" placeholder="業務,ぎょうむ,업무,초급&#10;会議,かいぎ,회의,초급"></textarea></div>
+      <button class="btn-hanko" style="width:100%;margin-top:10px;" onclick="bulkAddWords()">일괄 등록</button>
+      <p id="word-bulk-msg" class="muted small" style="margin-top:6px;"></p>
+    </div>
     <div class="card">
       <p style="font-weight:700;margin:0 0 8px;">단어 관리</p>
       <button class="btn-ghost" onclick="loadDefaultWords()">기본 단어 18개 불러오기</button>
@@ -1013,6 +1020,27 @@ function loadDefaultWords() {
     batch.commit().then(() => toast("기본 단어 18개를 불러왔어요."));
   });
 }
+async function bulkAddWords() {
+  const raw = document.getElementById("word-bulk").value;
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  const msg = document.getElementById("word-bulk-msg");
+  if (!lines.length) { msg.textContent = "입력된 내용이 없어요."; return; }
+  let batch = db.batch();
+  let count = 0, batchCount = 0;
+  for (const line of lines) {
+    const parts = line.split(",").map(s => (s || "").trim());
+    const [kanji, reading, meaning, level] = parts;
+    if (!kanji || !reading || !meaning) continue;
+    const lv = LEVELS.includes(level) ? level : "초급";
+    const ref = db.collection("sharedWords").doc();
+    batch.set(ref, { kanji, reading, meaning, example: "", exampleKo: "", level: lv });
+    count++; batchCount++;
+    if (batchCount >= 400) { await batch.commit(); batch = db.batch(); batchCount = 0; }
+  }
+  if (batchCount > 0) await batch.commit();
+  msg.textContent = `${count}개의 단어를 등록했어요.`;
+  document.getElementById("word-bulk").value = "";
+}
 function addSharedWord() {
   const kanji = document.getElementById("w-kanji").value.trim();
   const reading = document.getElementById("w-reading").value.trim();
@@ -1029,14 +1057,33 @@ function addSharedWord() {
 function renderSharedWordList() {
   const box = document.getElementById("shared-word-list");
   if (!box) return;
-  box.innerHTML = "<p class='muted small' style='margin:10px 0;'>등록된 단어 (" + S.words.length + "개)</p>" +
-    S.words.map(w => `
-      <div class="rowbetween small" style="padding:5px 0;border-bottom:1px solid var(--washi-dark);">
-        <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)} · ${escapeHtml(w.level)}</span></span>
-        ${w.id.startsWith("d") ? "" : `<button class="btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="deleteSharedWord('${w.id}')">삭제</button>`}
-      </div>
-    `).join("");
+  box.innerHTML = `
+    <div class="rowbetween small" style="margin:10px 0;">
+      <span class="muted">등록된 단어 (${S.words.length}개)</span>
+      <input id="shared-word-search" placeholder="검색" style="width:120px;padding:4px 6px;border:1px solid var(--washi-dark);border-radius:3px;font-size:12px;" oninput="renderSharedWordList()" />
+    </div>
+    <div id="shared-word-rows"></div>
+  `;
+  renderSharedWordRows();
 }
+function renderSharedWordRows() {
+  const rows = document.getElementById("shared-word-rows");
+  if (!rows) return;
+  const q = (document.getElementById("shared-word-search")?.value || "").trim().toLowerCase();
+  const list = S.words.filter(w => !q || w.kanji.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q) || w.reading.toLowerCase().includes(q));
+  rows.innerHTML = list.map(w => `
+    <div class="rowbetween small" style="padding:5px 0;border-bottom:1px solid var(--washi-dark);">
+      <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span></span>
+      <span style="display:flex;gap:6px;align-items:center;">
+        <select onchange="updateWordLevel('${w.id}', this.value)" style="font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;">
+          ${LEVELS.map(lv => `<option value="${lv}" ${w.level === lv ? "selected" : ""}>${lv}</option>`).join("")}
+        </select>
+        <button class="btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="deleteSharedWord('${w.id}')">삭제</button>
+      </span>
+    </div>
+  `).join("");
+}
+function updateWordLevel(id, level) { db.collection("sharedWords").doc(id).set({ level }, { merge: true }); }
 function deleteSharedWord(id) { db.collection("sharedWords").doc(id).delete(); }
 </script>
 </body>
