@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>회사 일본어 노트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Serif+JP:wght@500;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1E2A38;
+    --washi:#F3EEE3;
+    --washi-dark:#E7DFCE;
+    --hanko:#B23A2E;
+    --hanko-soft:#E7C9C4;
+    --sage:#4C6B5A;
+    --ink-soft:#5B564C;
+    --amber:#B8862E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--washi);color:var(--ink);font-family:'Noto Sans KR',sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  body{min-height:100vh;min-height:100dvh;}
+  button{font-family:inherit;cursor:pointer;}
+  input,textarea,select{font-family:inherit;}
+  .hidden{display:none !important;}
+  .wrap{max-width:640px;margin:0 auto;padding:0 18px 90px;}
+  header.top{border-bottom:2px solid var(--ink);padding:20px 18px 14px;}
+  .brand-jp{color:var(--hanko);letter-spacing:2px;font-size:11px;font-weight:700;margin:0 0 2px;}
+  .brand-ko{font-family:'Shippori Mincho',serif;font-size:22px;font-weight:700;margin:0;}
+  .rowbetween{display:flex;justify-content:space-between;align-items:center;}
+  .stamp{border:2px solid var(--hanko);color:var(--hanko);border-radius:6px;width:56px;height:56px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .stamp span{font-size:14px;font-weight:700;line-height:1;margin-top:2px;}
+  .stamp-label{color:var(--ink-soft);font-size:10px;margin-top:3px;text-align:center;}
+  .levels{display:flex;gap:8px;margin-top:14px;}
+  .level-btn{border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:5px 12px;
+    border-radius:3px;font-size:13px;font-weight:500;}
+  .level-btn.active{background:var(--ink);color:var(--washi);}
+  nav.tabs{max-width:640px;margin:14px auto 0;padding:0 18px;display:flex;gap:2px;flex-wrap:wrap;}
+  .tab-btn{background:none;border:none;color:var(--ink-soft);font-weight:700;font-size:13px;
+    padding:8px 10px;border-bottom:3px solid transparent;display:flex;align-items:center;gap:5px;}
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--hanko);}
+  main{max-width:640px;margin:0 auto;padding:20px 18px 60px;}
+  .card{border:1.5px solid var(--ink);background:#fff;border-radius:3px;padding:20px;}
+  .card-soft{border:1.5px dashed var(--ink-soft);border-radius:3px;padding:26px;text-align:center;}
+  .btn-main{background:var(--ink);color:var(--washi);border:none;padding:10px 20px;border-radius:3px;
+    font-size:14px;font-weight:700;}
+  .btn-hanko{background:var(--hanko);color:#fff;border:none;padding:10px 20px;border-radius:3px;
+    font-size:14px;font-weight:700;}
+  .btn-sage{background:var(--sage);color:#fff;border:none;padding:10px 16px;border-radius:3px;
+    font-size:13px;font-weight:700;}
+  .btn-ghost{background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:8px 14px;
+    border-radius:3px;font-size:13px;font-weight:600;}
+  .kanji-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;}
+  .kanji-cell{width:64px;height:64px;border:1.5px solid var(--ink);position:relative;background:#fff;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .kanji-cell::before{content:'';position:absolute;left:50%;top:6px;bottom:6px;width:1px;background:var(--washi-dark);}
+  .kanji-cell::after{content:'';position:absolute;top:50%;left:6px;right:6px;height:1px;background:var(--washi-dark);}
+  .kanji-cell span{position:relative;z-index:1;font-family:'Shippori Mincho','Noto Serif JP',serif;font-size:33px;}
+  .center{text-align:center;}
+  .muted{color:var(--ink-soft);}
+  .small{font-size:12px;}
+  .icon-btn{border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:3px;
+    padding:8px 16px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;}
+  .icon-btn.rec{border-color:var(--hanko);color:var(--hanko);background:var(--hanko-soft);}
+  .scorebar{background:var(--washi-dark);height:10px;border-radius:6px;overflow:hidden;}
+  .scorebar > div{height:10px;transition:width .4s;}
+  .field label{display:block;color:var(--ink-soft);font-size:11px;font-weight:700;margin-top:10px;}
+  .field input, .field textarea{width:100%;margin-top:4px;padding:8px;border:1px solid var(--washi-dark);
+    border-radius:3px;font-size:14px;}
+  .field textarea{min-height:90px;resize:vertical;font-family:monospace;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
+  .quiz-opt{display:block;width:100%;text-align:left;border:1.5px solid var(--ink);background:transparent;
+    color:var(--ink);padding:10px 14px;border-radius:3px;font-size:14px;font-weight:500;margin-top:8px;
+    display:flex;justify-content:space-between;align-items:center;}
+  .quiz-opt.correct{background:#EAF1EC;border-color:var(--sage);color:var(--sage);}
+  .quiz-opt.wrong{background:var(--hanko-soft);border-color:var(--hanko);color:var(--hanko);}
+  .dashed-top{border-top:1px dashed var(--washi-dark);margin-top:16px;padding-top:12px;}
+  .stampgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .stampcell{aspect-ratio:1;border:1.5px solid var(--washi-dark);border-radius:4px;display:flex;
+    align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--washi-dark);}
+  .stampcell.done{border-color:var(--hanko);color:var(--hanko);background:var(--hanko-soft);}
+  table.team{width:100%;border-collapse:collapse;font-size:13px;}
+  table.team th{text-align:left;color:var(--ink-soft);font-size:11px;padding:6px 4px;border-bottom:1.5px solid var(--ink);}
+  table.team td{padding:8px 4px;border-bottom:1px solid var(--washi-dark);}
+  .badge-ok{color:var(--sage);font-weight:700;}
+  .badge-no{color:var(--ink-soft);}
+  .row-detail{background:var(--washi);padding:10px;border-radius:3px;margin-top:4px;font-size:12px;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--washi);
+    padding:12px 18px;border-radius:6px;font-size:13px;z-index:50;max-width:90vw;text-align:center;}
+  #login-screen{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-card{max-width:360px;width:100%;border:1.5px solid var(--ink);background:#fff;border-radius:4px;padding:28px 24px;}
+  .err-msg{color:var(--hanko);font-size:12px;margin-top:8px;}
+  canvas{touch-action:none;border:1.5px solid var(--ink);border-radius:3px;background:#fff;display:block;margin:0 auto;}
+  .canvas-wrap{position:relative;width:300px;height:300px;margin:0 auto;}
+  .canvas-guide{position:absolute;top:0;left:0;width:300px;height:300px;display:flex;align-items:center;justify-content:center;
+    font-family:'Shippori Mincho',serif;font-size:150px;color:var(--ink);opacity:.10;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div id="loading" class="center" style="padding-top:120px;">
+  <p class="muted">불러오는 중...</p>
+</div>
+
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <p class="brand-jp">会社の日本語ノート</p>
+    <h1 class="brand-ko" style="margin-bottom:18px;">로그인</h1>
+    <div class="field">
+      <label>사번</label>
+      <input id="login-empid" placeholder="예: 20231234" />
+      <label>이름</label>
+      <input id="login-name" placeholder="예: 홍길동" />
+    </div>
+    <p id="login-error" class="err-msg hidden"></p>
+    <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handleLogin()">시작하기</button>
+    <p class="muted small" style="margin-top:14px;">등록된 사번이 없다면 팀장(관리자)에게 문의해주세요.</p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="wrap" style="padding:0;">
+      <div class="rowbetween">
+        <div>
+          <p class="brand-jp">会社の日本語ノート</p>
+          <h1 class="brand-ko" id="user-greeting">일본어 업무단어 노트</h1>
+        </div>
+        <div class="stamp">
+          <span id="streak-num">0</span>
+          <span style="font-size:9px;">일</span>
+        </div>
+      </div>
+      <div class="levels" id="level-selector"></div>
+    </div>
+  </header>
+  <nav class="tabs" id="tab-nav"></nav>
+  <main class="wrap" id="tab-content" style="padding-left:0;padding-right:0;"></main>
+</div>
+
+<div id="toast-root"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+/* =========================================================
+   0. Firebase 설정 - 반드시 본인 프로젝트 값으로 교체하세요
+   Firebase 콘솔 > 프로젝트 설정 > 일반 > 내 앱 > SDK 설정 및 구성
+========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCg8ZCbmWYC_vahOkyZ9OvGEbOlQy0Kgss",
+  authDomain: "company-jp-note.firebaseapp.com",
+  projectId: "company-jp-note",
+  storageBucket: "company-jp-note.firebasestorage.app",
+  messagingSenderId: "752908518276",
+  appId: "1:752908518276:web:aa78ff334febfcbd6d93d1"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* =========================================================
+   1. 상수 / 기본 데이터
+========================================================= */
+const LEVELS = ["초급", "중급", "고급"];
+
+const DEFAULT_WORDS = [
+  { id: "d1", kanji: "会議", reading: "かいぎ", meaning: "회의", example: "明日、会議があります。", exampleKo: "내일 회의가 있습니다.", level: "초급" },
+  { id: "d2", kanji: "資料", reading: "しりょう", meaning: "자료", example: "資料を準備してください。", exampleKo: "자료를 준비해 주세요.", level: "초급" },
+  { id: "d3", kanji: "報告", reading: "ほうこく", meaning: "보고", example: "進捗を報告します。", exampleKo: "진행 상황을 보고합니다.", level: "초급" },
+  { id: "d4", kanji: "出張", reading: "しゅっちょう", meaning: "출장", example: "来週、大阪へ出張します。", exampleKo: "다음 주 오사카로 출장 갑니다.", level: "초급" },
+  { id: "d5", kanji: "休み", reading: "やすみ", meaning: "휴가, 쉬는 날", example: "明日は休みです。", exampleKo: "내일은 쉬는 날입니다.", level: "초급" },
+  { id: "d6", kanji: "電話", reading: "でんわ", meaning: "전화", example: "後で電話します。", exampleKo: "나중에 전화하겠습니다.", level: "초급" },
+  { id: "d7", kanji: "打ち合わせ", reading: "うちあわせ", meaning: "미팅, 사전 협의", example: "午後、打ち合わせがあります。", exampleKo: "오후에 미팅이 있습니다.", level: "중급" },
+  { id: "d8", kanji: "締め切り", reading: "しめきり", meaning: "마감", example: "締め切りは金曜日です。", exampleKo: "마감은 금요일입니다.", level: "중급" },
+  { id: "d9", kanji: "承認", reading: "しょうにん", meaning: "승인", example: "部長の承認が必要です。", exampleKo: "부장님의 승인이 필요합니다.", level: "중급" },
+  { id: "d10", kanji: "提案", reading: "ていあん", meaning: "제안", example: "新しい提案をします。", exampleKo: "새로운 제안을 합니다.", level: "중급" },
+  { id: "d11", kanji: "見積もり", reading: "みつもり", meaning: "견적", example: "見積もりを送ります。", exampleKo: "견적을 보내겠습니다.", level: "중급" },
+  { id: "d12", kanji: "対応", reading: "たいおう", meaning: "대응, 처리", example: "すぐに対応します。", exampleKo: "즉시 대응하겠습니다.", level: "중급" },
+  { id: "d13", kanji: "契約", reading: "けいやく", meaning: "계약", example: "契約書にサインしてください。", exampleKo: "계약서에 서명해 주세요.", level: "고급" },
+  { id: "d14", kanji: "交渉", reading: "こうしょう", meaning: "협상", example: "価格を交渉します。", exampleKo: "가격을 협상합니다.", level: "고급" },
+  { id: "d15", kanji: "稟議", reading: "りんぎ", meaning: "품의(결재)", example: "稟議書を作成します。", exampleKo: "품의서를 작성합니다.", level: "고급" },
+  { id: "d16", kanji: "納期", reading: "のうき", meaning: "납기", example: "納期を守ってください。", exampleKo: "납기를 지켜 주세요.", level: "고급" },
+  { id: "d17", kanji: "損益", reading: "そんえき", meaning: "손익", example: "損益を確認します。", exampleKo: "손익을 확인합니다.", level: "고급" },
+  { id: "d18", kanji: "是正", reading: "ぜせい", meaning: "시정", example: "問題を是正します。", exampleKo: "문제를 시정합니다.", level: "고급" }
+];
+
+/* =========================================================
+   2. 유틸
+========================================================= */
+function escapeHtml(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+function similarity(a, b) {
+  const A = (a || "").replace(/\s/g, "");
+  const B = (b || "").replace(/\s/g, "");
+  if (!A.length && !B.length) return 100;
+  const dist = levenshtein(A, B);
+  const maxLen = Math.max(A.length, B.length, 1);
+  return Math.max(0, Math.round((1 - dist / maxLen) * 100));
+}
+function todayStr(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function toast(msg, ms = 2600) {
+  const root = document.getElementById("toast-root");
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+function kanjiRowHtml(word, size = 64) {
+  const px = size;
+  const fontPx = Math.round(size * 0.52);
+  return `<div class="kanji-row">${word.split("").map(ch =>
+    `<div class="kanji-cell" style="width:${px}px;height:${px}px;"><span style="font-size:${fontPx}px;">${escapeHtml(ch)}</span></div>`
+  ).join("")}</div>`;
+}
+
+/* =========================================================
+   3. TTS / 음성 인식
+========================================================= */
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "ja-JP";
+  utter.rate = 0.95;
+  const voices = window.speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang && v.lang.startsWith("ja"));
+  if (jaVoice) utter.voice = jaVoice;
+  window.speechSynthesis.speak(utter);
+}
+let currentRecognizer = null;
+function listenPronunciation(onResult, onError, onStart, onEnd) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { onError("이 브라우저는 음성 인식을 지원하지 않아요. 크롬(Chrome) 브라우저를 사용해보세요."); return; }
+  const rec = new SR();
+  rec.lang = "ja-JP";
+  rec.interimResults = false;
+  rec.maxAlternatives = 5;
+  rec.onstart = () => onStart && onStart();
+  rec.onend = () => onEnd && onEnd();
+  rec.onerror = (e) => onError("음성 인식 오류: " + e.error);
+  rec.onresult = (e) => {
+    const alts = [];
+    for (let i = 0; i < e.results[0].length; i++) alts.push(e.results[0][i].transcript);
+    onResult(alts);
+  };
+  currentRecognizer = rec;
+  rec.start();
+}
+
+/* =========================================================
+   4. 전역 상태
+========================================================= */
+const S = {
+  uid: null,
+  user: null,          // {empId, name, role, level}
+  words: [...DEFAULT_WORDS],
+  wordStats: {},        // wordId -> {quizAttempts, quizCorrect, pronAttempts, pronScoreSum, handwritingCount}
+  progress: { streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0 },
+  team: [],             // leader 전용 요약 목록
+  roster: [],           // leader 전용 명단
+  tab: "study",
+  studyIdx: 0,
+  quiz: null
+};
+
+/* =========================================================
+   5. 부트 / 로그인
+========================================================= */
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    try { await auth.signInAnonymously(); } catch (e) { console.error(e); }
+    return;
+  }
+  S.uid = user.uid;
+  const doc = await db.collection("users").doc(S.uid).get().catch(() => null);
+  if (doc && doc.exists) {
+    S.user = doc.data();
+    enterApp();
+  } else {
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("login-screen").classList.remove("hidden");
+  }
+});
+
+async function handleLogin() {
+  const empId = document.getElementById("login-empid").value.trim();
+  const name = document.getElementById("login-name").value.trim();
+  const errEl = document.getElementById("login-error");
+  errEl.classList.add("hidden");
+  if (!empId || !name) { errEl.textContent = "사번과 이름을 모두 입력해주세요."; errEl.classList.remove("hidden"); return; }
+  try {
+    const rosterDoc = await db.collection("roster").doc(empId).get();
+    if (!rosterDoc.exists || rosterDoc.data().active === false) {
+      errEl.textContent = "등록되지 않은 사번이거나 비활성화된 계정이에요. 관리자에게 문의해주세요.";
+      errEl.classList.remove("hidden");
+      return;
+    }
+    const rdata = rosterDoc.data();
+    if (rdata.name.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
+      errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
+      errEl.classList.remove("hidden");
+      return;
+    }
+    const userDoc = {
+      empId, name: rdata.name, role: rdata.role || "member", level: "초급",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastActive: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection("users").doc(S.uid).set(userDoc, { merge: true });
+    await db.collection("progress").doc(S.uid).set({
+      empId, name: rdata.name, streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, level: "초급"
+    }, { merge: true });
+    const doc = await db.collection("users").doc(S.uid).get();
+    S.user = doc.data();
+    enterApp();
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "로그인 중 오류가 발생했어요. 다시 시도해주세요.";
+    errEl.classList.remove("hidden");
+  }
+}
+
+function enterApp() {
+  document.getElementById("loading").classList.add("hidden");
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("user-greeting").textContent = S.user.name + "님의 일본어 노트";
+  renderLevelSelector();
+  renderTabNav();
+  setupListeners();
+}
+
+/* =========================================================
+   6. Firestore 실시간 리스너
+========================================================= */
+function setupListeners() {
+  db.collection("sharedWords").onSnapshot(snap => {
+    const custom = [];
+    snap.forEach(d => custom.push({ id: d.id, ...d.data() }));
+    S.words = custom.length ? custom : [...DEFAULT_WORDS];
+    if (S.tab === "study" || S.tab === "quiz" || S.tab === "write") renderTab();
+  }, err => console.error("sharedWords listener", err));
+
+  db.collection("progress").doc(S.uid).onSnapshot(doc => {
+    if (doc.exists) {
+      S.progress = doc.data();
+      document.getElementById("streak-num").textContent = S.progress.streak || 0;
+    }
+  }, err => console.error("progress listener", err));
+
+  db.collection("progress").doc(S.uid).collection("wordStats").onSnapshot(snap => {
+    const map = {};
+    snap.forEach(d => map[d.id] = d.data());
+    S.wordStats = map;
+    if (S.tab === "record") renderTab();
+  }, err => console.error("wordStats listener", err));
+
+  if (S.user.role === "leader") {
+    db.collection("progress").onSnapshot(snap => {
+      const list = [];
+      snap.forEach(d => { if (d.id !== S.uid) list.push({ uid: d.id, ...d.data() }); else list.push({ uid: d.id, ...d.data() }); });
+      S.team = list;
+      if (S.tab === "team") renderTab();
+    }, err => console.error("team listener", err));
+
+    db.collection("roster").onSnapshot(snap => {
+      const list = [];
+      snap.forEach(d => list.push({ empId: d.id, ...d.data() }));
+      S.roster = list;
+      if (S.tab === "admin") renderTab();
+    }, err => console.error("roster listener", err));
+  }
+}
+
+/* =========================================================
+   7. 진도 업데이트 (스트릭 / 정답률)
+========================================================= */
+async function markActivity({ quizPct } = {}) {
+  const ref = db.collection("progress").doc(S.uid);
+  await db.runTransaction(async (t) => {
+    const doc = await t.get(ref);
+    const data = doc.exists ? doc.data() : {};
+    const today = todayStr();
+    const yesterday = todayStr(-1);
+    let streak = data.streak || 0;
+    const last = data.lastStudyDate;
+    if (last === today) { /* 이미 오늘 카운트됨 */ }
+    else if (last === yesterday) { streak += 1; }
+    else { streak = 1; }
+    const patch = {
+      lastStudyDate: today, streak, level: S.user.level,
+      name: S.user.name, empId: S.user.empId,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (typeof quizPct === "number") {
+      patch.quizCount = (data.quizCount || 0) + 1;
+      patch.quizAccSum = (data.quizAccSum || 0) + quizPct;
+    }
+    t.set(ref, patch, { merge: true });
+  });
+}
+function bumpWordStat(wordId, patch) {
+  const ref = db.collection("progress").doc(S.uid).collection("wordStats").doc(wordId);
+  ref.set(patch, { merge: true }).catch(e => console.error(e));
+}
+function computeTier() {
+  const count = S.progress.quizCount || 0;
+  if (count < 3) return "beginner";
+  const acc = S.progress.quizAccSum / count;
+  if (acc >= 0.85) return "advanced";
+  if (acc >= 0.6) return "intermediate";
+  return "beginner";
+}
+
+/* =========================================================
+   8. 레벨 선택 / 탭 네비게이션
+========================================================= */
+function renderLevelSelector() {
+  const box = document.getElementById("level-selector");
+  box.innerHTML = LEVELS.map(lv =>
+    `<button class="level-btn ${S.user.level === lv ? "active" : ""}" onclick="setLevel('${lv}')">${lv}</button>`
+  ).join("");
+}
+async function setLevel(lv) {
+  S.user.level = lv;
+  renderLevelSelector();
+  await db.collection("users").doc(S.uid).set({ level: lv }, { merge: true });
+  renderTab();
+}
+function renderTabNav() {
+  const tabs = [
+    { id: "study", label: "학습" },
+    { id: "quiz", label: "퀴즈" },
+    { id: "write", label: "쓰기연습" },
+    { id: "record", label: "기록" }
+  ];
+  if (S.user.role === "leader") {
+    tabs.push({ id: "team", label: "팀현황" });
+    tabs.push({ id: "admin", label: "관리" });
+  }
+  const nav = document.getElementById("tab-nav");
+  nav.innerHTML = tabs.map(t =>
+    `<button class="tab-btn ${S.tab === t.id ? "active" : ""}" onclick="goTab('${t.id}')">${t.label}</button>`
+  ).join("");
+}
+function goTab(id) { S.tab = id; renderTabNav(); renderTab(); }
+
+function renderTab() {
+  const c = document.getElementById("tab-content");
+  if (S.tab === "study") return renderStudyTab(c);
+  if (S.tab === "quiz") return renderQuizTab(c);
+  if (S.tab === "write") return renderWriteTab(c);
+  if (S.tab === "record") return renderRecordTab(c);
+  if (S.tab === "team") return renderTeamTab(c);
+  if (S.tab === "admin") return renderAdminTab(c);
+}
+
+/* =========================================================
+   9. 학습 탭
+========================================================= */
+function levelWords() { return S.words.filter(w => w.level === S.user.level); }
+
+function renderStudyTab(c) {
+  const words = levelWords();
+  if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
+  if (S.studyIdx >= words.length) S.studyIdx = 0;
+  const w = words[S.studyIdx];
+  c.innerHTML = `
+    <div class="rowbetween small muted" style="margin-bottom:10px;">
+      <span>${S.studyIdx + 1} / ${words.length}</span>
+      <span style="color:var(--hanko);font-weight:700;">${w.level}</span>
+    </div>
+    <div class="card">
+      ${kanjiRowHtml(w.kanji, 68)}
+      <div class="center" style="display:flex;gap:10px;justify-content:center;margin-top:16px;">
+        <button class="icon-btn" onclick="speak('${escapeHtml(w.kanji)}')">🔊<span>듣기</span></button>
+        <button class="icon-btn" id="pron-btn" onclick="practicePron('${w.id}', '${escapeHtml(w.reading)}', '${escapeHtml(w.kanji)}')">🎙<span>말하기 연습</span></button>
+      </div>
+      <div id="pron-result"></div>
+      <div class="center" style="margin-top:20px;" id="reveal-zone">
+        <button class="btn-main" onclick="revealWord()">뜻 · 읽기 보기</button>
+      </div>
+    </div>
+    <div class="rowbetween" style="margin-top:16px;">
+      <button class="btn-ghost" onclick="studyNav(-1)">◀ 이전</button>
+      <button class="btn-sage" onclick="markActivity().then(()=>toast('오늘 학습을 기록했어요! 📌'))">오늘 학습 완료로 표시</button>
+      <button class="btn-ghost" onclick="studyNav(1)">다음 ▶</button>
+    </div>
+  `;
+  window.__currentStudyWord = w;
+}
+function studyNav(d) {
+  const words = levelWords();
+  S.studyIdx = (S.studyIdx + d + words.length) % words.length;
+  renderStudyTab(document.getElementById("tab-content"));
+}
+function revealWord() {
+  const w = window.__currentStudyWord;
+  document.getElementById("reveal-zone").innerHTML = `
+    <p style="color:var(--hanko);font-family:'Noto Serif JP',serif;font-size:18px;font-weight:700;margin:0;">${escapeHtml(w.reading)}</p>
+    <p style="font-size:20px;font-weight:700;margin:4px 0 0;">${escapeHtml(w.meaning)}</p>
+    <div class="dashed-top" style="text-align:left;">
+      <p style="margin:0;">${escapeHtml(w.example)}</p>
+      <p class="muted" style="margin:4px 0 0;">${escapeHtml(w.exampleKo)}</p>
+    </div>
+  `;
+}
+function practicePron(wordId, reading, kanji) {
+  const resultBox = document.getElementById("pron-result");
+  resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">듣고 있어요...</p>`;
+  listenPronunciation(
+    (alts) => {
+      let best = 0;
+      alts.forEach(a => { best = Math.max(best, similarity(a, reading), similarity(a, kanji)); });
+      const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0 };
+      bumpWordStat(wordId, { pronAttempts: cur.pronAttempts + 1, pronScoreSum: cur.pronScoreSum + best });
+      const color = best >= 85 ? "var(--sage)" : best >= 60 ? "var(--amber)" : "var(--hanko)";
+      const msg = best >= 85 ? "아주 좋아요! 발음이 정확해요 👏" : best >= 60 ? "괜찮아요! 조금만 더 또렷하게 발음해보세요." : "다시 한 번 천천히 발음해볼까요?";
+      resultBox.innerHTML = `
+        <div class="scorebar" style="margin-top:14px;"><div style="width:${best}%;background:${color};"></div></div>
+        <p class="small center" style="color:${color};font-weight:700;margin-top:4px;">발음 정확도 ${best}%</p>
+        <p class="muted small center">${msg}</p>
+      `;
+    },
+    (errMsg) => { resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">${escapeHtml(errMsg)}</p>`; },
+    () => {}, () => {}
+  );
+}
+function emptyStateHtml() {
+  return `<div class="card-soft"><p class="muted small">이 레벨에는 아직 단어가 없어요. 관리 탭에서 단어를 추가해보세요.</p></div>`;
+}
+
+/* =========================================================
+   10. 퀴즈 탭 (난이도 적응형)
+========================================================= */
+function buildQuiz(words, tier, count = 8) {
+  const pool = words.length ? words : DEFAULT_WORDS;
+  const typingRate = tier === "advanced" ? 0.7 : tier === "intermediate" ? 0.3 : 0;
+  const questions = [];
+  for (let i = 0; i < count; i++) {
+    const w = pool[Math.floor(Math.random() * pool.length)];
+    const isTyping = Math.random() < typingRate;
+    const qType = Math.random() > 0.5 ? "meaning" : "reading";
+    if (isTyping) {
+      questions.push({ word: w, mode: "typing", qType });
+    } else {
+      const distractors = shuffle(pool.filter(x => x.id !== w.id)).slice(0, 3);
+      questions.push({ word: w, mode: "choice", qType, options: shuffle([w, ...distractors]) });
+    }
+  }
+  return questions;
+}
+function renderQuizTab(c) {
+  const words = levelWords();
+  if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
+  if (!S.quiz || S.quiz.finished === undefined) {
+    c.innerHTML = `
+      <div class="card-soft">
+        <p style="font-weight:700;margin:0 0 4px;">${S.user.level} 레벨 퀴즈 (8문제)</p>
+        <p class="muted small" style="margin:0 0 18px;">현재 실력에 맞춰 객관식/직접입력 문제가 섞여 나와요.</p>
+        <button class="btn-main" onclick="startQuiz()">퀴즈 시작하기</button>
+      </div>`;
+    return;
+  }
+  const q = S.quiz.questions[S.quiz.idx];
+  if (S.quiz.idx >= S.quiz.questions.length) return renderQuizResult(c);
+
+  let bodyHtml = "";
+  if (q.mode === "choice") {
+    bodyHtml = q.options.map(opt => {
+      let cls = "";
+      if (S.quiz.selected) {
+        if (opt.id === q.word.id) cls = "correct";
+        else if (S.quiz.selected.id === opt.id) cls = "wrong";
+      }
+      const label = q.qType === "meaning" ? opt.meaning : opt.reading;
+      return `<button class="quiz-opt ${cls}" onclick="chooseQuizOption('${opt.id}')" ${S.quiz.selected ? "disabled" : ""}>${escapeHtml(label)}</button>`;
+    }).join("");
+  } else {
+    bodyHtml = `
+      <input id="typing-input" class="field-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
+        placeholder="${q.qType === "meaning" ? "한국어 뜻을 입력하세요" : "히라가나로 읽는 법을 입력하세요"}" ${S.quiz.selected ? "disabled" : ""} />
+      <button class="btn-main" style="width:100%;margin-top:10px;" onclick="submitTyping()" ${S.quiz.selected ? "disabled" : ""}>제출</button>
+    `;
+  }
+
+  c.innerHTML = `
+    <div class="rowbetween small muted" style="margin-bottom:10px;">
+      <span>${S.quiz.idx + 1} / ${S.quiz.questions.length}</span>
+      <span>점수 ${S.quiz.score}</span>
+    </div>
+    <div class="card">
+      <p class="muted small" style="font-weight:700;margin:0 0 8px;">${q.qType === "meaning" ? "이 단어의 뜻은?" : "이 단어의 읽는 법은?"}${q.mode === "typing" ? " (직접 입력)" : ""}</p>
+      ${kanjiRowHtml(q.word.kanji, 56)}
+      ${bodyHtml}
+      <div id="quiz-feedback"></div>
+    </div>
+  `;
+}
+function startQuiz() {
+  const words = levelWords();
+  const tier = computeTier();
+  S.quiz = { questions: buildQuiz(words, tier, 8), idx: 0, score: 0, selected: null };
+  renderQuizTab(document.getElementById("tab-content"));
+}
+function chooseQuizOption(optId) {
+  if (S.quiz.selected) return;
+  const q = S.quiz.questions[S.quiz.idx];
+  const opt = q.options.find(o => o.id === optId);
+  S.quiz.selected = opt;
+  const correct = opt.id === q.word.id;
+  if (correct) S.quiz.score++;
+  const cur = S.wordStats[q.word.id] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0 };
+  bumpWordStat(q.word.id, { quizAttempts: cur.quizAttempts + 1, quizCorrect: cur.quizCorrect + (correct ? 1 : 0) });
+  renderQuizTab(document.getElementById("tab-content"));
+  appendQuizFeedback(q);
+}
+function submitTyping() {
+  const q = S.quiz.questions[S.quiz.idx];
+  const val = document.getElementById("typing-input").value.trim();
+  const target = q.qType === "meaning" ? q.word.meaning : q.word.reading;
+  const score = similarity(val, target);
+  const correct = score >= 80;
+  S.quiz.selected = { id: correct ? q.word.id : "wrong", score };
+  if (correct) S.quiz.score++;
+  const cur = S.wordStats[q.word.id] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0 };
+  bumpWordStat(q.word.id, { quizAttempts: cur.quizAttempts + 1, quizCorrect: cur.quizCorrect + (correct ? 1 : 0) });
+  renderQuizTab(document.getElementById("tab-content"));
+  appendQuizFeedback(q, correct, target);
+}
+function appendQuizFeedback(q, typingCorrect, typingTarget) {
+  const box = document.getElementById("quiz-feedback");
+  if (!box) return;
+  const isLast = S.quiz.idx + 1 >= S.quiz.questions.length;
+  let fb = "";
+  if (typeof typingCorrect === "boolean") {
+    fb = typingCorrect
+      ? `<p style="color:var(--sage);font-weight:700;">정답이에요! ✅</p>`
+      : `<p style="color:var(--hanko);font-weight:700;">아쉬워요. 정답: ${escapeHtml(typingTarget)}</p>`;
+  }
+  box.innerHTML = `
+    ${fb}
+    <div class="dashed-top">
+      <p style="margin:0;">${escapeHtml(q.word.example)}</p>
+      <p class="muted" style="margin:4px 0 0;">${escapeHtml(q.word.exampleKo)}</p>
+      <button class="btn-main" style="width:100%;margin-top:12px;" onclick="nextQuizQ()">${isLast ? "결과 보기" : "다음 문제"}</button>
+    </div>
+  `;
+}
+function nextQuizQ() {
+  S.quiz.idx++;
+  S.quiz.selected = null;
+  if (S.quiz.idx >= S.quiz.questions.length) {
+    S.quiz.finished = true;
+    const pct = S.quiz.score / S.quiz.questions.length;
+    markActivity({ quizPct: pct }).then(() => {
+      const prevTier = computeTier();
+      setTimeout(() => {
+        const newTier = computeTier();
+        if (newTier === "advanced" && prevTier !== "advanced") {
+          toast("실력이 많이 늘었어요! 다음 레벨에도 도전해보세요 🎉");
+        }
+      }, 500);
+    });
+  }
+  renderQuizTab(document.getElementById("tab-content"));
+}
+function renderQuizResult(c) {
+  const total = S.quiz.questions.length;
+  const pct = Math.round((S.quiz.score / total) * 100);
+  c.innerHTML = `
+    <div class="card-soft">
+      <p style="font-size:24px;font-weight:700;margin:0;">${S.quiz.score} / ${total}</p>
+      <p class="muted" style="margin:4px 0 18px;">정답률 ${pct}%</p>
+      <button class="btn-main" onclick="S.quiz=null;renderQuizTab(document.getElementById('tab-content'));">한 번 더 풀기</button>
+    </div>
+  `;
+}
+
+/* =========================================================
+   11. 쓰기 연습 탭 (캔버스)
+========================================================= */
+let drawing = false, canvasCtx = null;
+function renderWriteTab(c) {
+  const words = levelWords();
+  if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
+  if (S.studyIdx >= words.length) S.studyIdx = 0;
+  const w = words[S.studyIdx];
+  c.innerHTML = `
+    <div class="rowbetween small muted" style="margin-bottom:10px;">
+      <span>${S.studyIdx + 1} / ${words.length}</span>
+      <span>${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span>
+    </div>
+    <div class="canvas-wrap">
+      <div class="canvas-guide">${escapeHtml(w.kanji[0] || "")}</div>
+      <canvas id="write-canvas" width="300" height="300"></canvas>
+    </div>
+    <div class="rowbetween" style="max-width:300px;margin:14px auto 0;">
+      <button class="btn-ghost" onclick="clearCanvas()">지우기 🧹</button>
+      <button class="btn-ghost" onclick="speak('${escapeHtml(w.kanji)}')">🔊 발음듣기</button>
+    </div>
+    <div class="rowbetween" style="max-width:300px;margin:14px auto 0;gap:8px;">
+      <button class="btn-sage" style="flex:1;" onclick="finishWriting('${w.id}', true)">잘 썼어요 👍</button>
+      <button class="btn-ghost" style="flex:1;" onclick="finishWriting('${w.id}', false)">다시 연습</button>
+    </div>
+    <div class="rowbetween" style="margin-top:20px;">
+      <button class="btn-ghost" onclick="writeNav(-1)">◀ 이전 글자</button>
+      <button class="btn-ghost" onclick="writeNav(1)">다음 글자 ▶</button>
+    </div>
+  `;
+  setupCanvas();
+}
+function writeNav(d) {
+  const words = levelWords();
+  S.studyIdx = (S.studyIdx + d + words.length) % words.length;
+  renderWriteTab(document.getElementById("tab-content"));
+}
+function setupCanvas() {
+  const canvas = document.getElementById("write-canvas");
+  if (!canvas) return;
+  canvasCtx = canvas.getContext("2d");
+  canvasCtx.lineWidth = 6;
+  canvasCtx.lineCap = "round";
+  canvasCtx.strokeStyle = "#1E2A38";
+  let last = null;
+  const pos = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+  };
+  const start = (e) => { drawing = true; last = pos(e); e.preventDefault(); };
+  const move = (e) => {
+    if (!drawing) return;
+    const p = pos(e);
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(last.x, last.y);
+    canvasCtx.lineTo(p.x, p.y);
+    canvasCtx.stroke();
+    last = p;
+    e.preventDefault();
+  };
+  const end = () => { drawing = false; };
+  canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+function clearCanvas() {
+  const canvas = document.getElementById("write-canvas");
+  if (canvasCtx && canvas) canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+}
+function finishWriting(wordId, ok) {
+  const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0, handwritingCount: 0 };
+  bumpWordStat(wordId, { handwritingCount: (cur.handwritingCount || 0) + 1 });
+  markActivity().then(() => toast(ok ? "잘했어요! 오늘 학습으로 기록했어요 ✍️" : "괜찮아요, 계속 연습해봐요!"));
+  clearCanvas();
+}
+
+/* =========================================================
+   12. 기록 탭 (개인)
+========================================================= */
+function renderRecordTab(c) {
+  const days = Array.from({ length: 28 }, (_, i) => todayStr(-(27 - i)));
+  const acc = S.progress.quizCount ? Math.round((S.progress.quizAccSum / S.progress.quizCount) * 100) : 0;
+  const weak = Object.entries(S.wordStats)
+    .map(([id, s]) => {
+      const w = S.words.find(x => x.id === id) || DEFAULT_WORDS.find(x => x.id === id);
+      if (!w) return null;
+      if (!s.quizAttempts && !s.pronAttempts) return null;
+      const quizAcc = s.quizAttempts ? s.quizCorrect / s.quizAttempts : 1;
+      const pronAcc = s.pronAttempts ? (s.pronScoreSum / s.pronAttempts) / 100 : 1;
+      return { ...w, combined: (quizAcc + pronAcc) / 2 };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.combined - b.combined)
+    .slice(0, 5);
+
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="rowbetween" style="margin-bottom:10px;">
+        <p style="font-weight:700;margin:0;">지난 28일 학습 도장</p>
+        <span style="color:var(--hanko);font-weight:700;">🔥 ${S.progress.streak || 0}일 연속</span>
+      </div>
+      <div class="stampgrid">
+        ${days.map(d => {
+          const done = d === S.progress.lastStudyDate || (d < todayStr() && isPastStudyDay(d));
+          return `<div class="stampcell ${d === S.progress.lastStudyDate ? "done" : ""}" title="${d}">${d === S.progress.lastStudyDate ? "済" : ""}</div>`;
+        }).join("")}
+      </div>
+      <p class="muted small" style="margin-top:8px;">※ 오늘 도장만 실시간 표시돼요. 지난 기록 전체는 추후 상세 로그로 확장할 수 있어요.</p>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:700;margin:0 0 6px;">전체 퀴즈 정답률</p>
+      <p style="font-size:26px;font-weight:700;color:var(--hanko);margin:0;">${acc}%</p>
+      <p class="muted small">누적 ${S.progress.quizCount || 0}회 응시 · 현재 실력 단계: ${tierLabel(computeTier())}</p>
+    </div>
+    <div class="card">
+      <p style="font-weight:700;margin:0 0 10px;">더 연습이 필요한 단어</p>
+      ${weak.length === 0 ? `<p class="muted small">퀴즈나 발음 연습을 하면 여기에 표시돼요.</p>` :
+        weak.map(w => `<div class="rowbetween small" style="margin-bottom:6px;">
+          <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)}</span></span>
+          <span style="color:var(--hanko);font-weight:700;">${Math.round(w.combined * 100)}%</span>
+        </div>`).join("")}
+    </div>
+  `;
+}
+function isPastStudyDay() { return false; }
+function tierLabel(t) { return t === "advanced" ? "심화(고급형 문제)" : t === "intermediate" ? "중급(혼합형 문제)" : "기초(객관식 위주)"; }
+
+/* =========================================================
+   13. 팀 현황 탭 (leader)
+========================================================= */
+function renderTeamTab(c) {
+  const today = todayStr();
+  const rows = [...S.team].sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+  const studiedCount = rows.filter(r => r.lastStudyDate === today).length;
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:14px;">
+      <p style="font-weight:700;margin:0;">오늘 학습 완료: ${studiedCount} / ${rows.length}명</p>
+      <input id="team-search" placeholder="이름 또는 사번 검색" style="width:100%;margin-top:10px;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderTeamRows()" />
+    </div>
+    <div class="card">
+      <table class="team">
+        <thead><tr><th>이름</th><th>레벨</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
+        <tbody id="team-rows"></tbody>
+      </table>
+    </div>
+  `;
+  renderTeamRows();
+}
+function renderTeamRows() {
+  const q = (document.getElementById("team-search")?.value || "").trim().toLowerCase();
+  const today = todayStr();
+  const rows = [...S.team]
+    .filter(r => !q || (r.name || "").toLowerCase().includes(q) || (r.empId || "").toLowerCase().includes(q))
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+  const body = document.getElementById("team-rows");
+  if (!body) return;
+  body.innerHTML = rows.map(r => {
+    const acc = r.quizCount ? Math.round((r.quizAccSum / r.quizCount) * 100) : 0;
+    const studied = r.lastStudyDate === today;
+    return `
+      <tr onclick="toggleTeamDetail('${r.uid}')" style="cursor:pointer;">
+        <td>${escapeHtml(r.name || "-")} <span class="muted small">(${escapeHtml(r.empId || "")})</span></td>
+        <td>${escapeHtml(r.level || "초급")}</td>
+        <td class="${studied ? "badge-ok" : "badge-no"}">${studied ? "완료" : "-"}</td>
+        <td>${r.streak || 0}일</td>
+        <td>${acc}%</td>
+      </tr>
+      <tr id="detail-${r.uid}" class="hidden"><td colspan="5"><div class="row-detail" id="detail-body-${r.uid}"></div></td></tr>
+    `;
+  }).join("");
+}
+function toggleTeamDetail(uid) {
+  const row = document.getElementById(`detail-${uid}`);
+  if (!row) return;
+  const isHidden = row.classList.contains("hidden");
+  document.querySelectorAll('[id^="detail-"]').forEach(r => r.classList.add("hidden"));
+  if (isHidden) {
+    row.classList.remove("hidden");
+    const body = document.getElementById(`detail-body-${uid}`);
+    body.textContent = "불러오는 중...";
+    db.collection("progress").doc(uid).collection("wordStats").get().then(snap => {
+      const stats = [];
+      snap.forEach(d => stats.push({ id: d.id, ...d.data() }));
+      const weak = stats
+        .map(s => {
+          const w = S.words.find(x => x.id === s.id) || DEFAULT_WORDS.find(x => x.id === s.id);
+          if (!w) return null;
+          const quizAcc = s.quizAttempts ? s.quizCorrect / s.quizAttempts : 1;
+          return { ...w, acc: Math.round(quizAcc * 100) };
+        }).filter(Boolean).sort((a, b) => a.acc - b.acc).slice(0, 5);
+      body.innerHTML = weak.length
+        ? "취약 단어: " + weak.map(w => `${escapeHtml(w.kanji)}(${w.acc}%)`).join(", ")
+        : "아직 퀴즈 기록이 없어요.";
+    });
+  }
+}
+
+/* =========================================================
+   14. 관리 탭 (leader: 팀원 등록 + 단어 관리)
+========================================================= */
+function renderAdminTab(c) {
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:18px;">
+      <p style="font-weight:700;margin:0 0 8px;">팀원 일괄 등록</p>
+      <p class="muted small">한 줄에 "사번,이름" 형식으로 입력하세요. 예) 20231234,홍길동</p>
+      <div class="field"><textarea id="roster-bulk" placeholder="20231234,홍길동&#10;20235678,김영희"></textarea></div>
+      <button class="btn-hanko" style="width:100%;margin-top:10px;" onclick="bulkAddRoster()">일괄 등록</button>
+      <p id="roster-msg" class="muted small" style="margin-top:6px;"></p>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <p style="font-weight:700;margin:0 0 10px;">등록된 팀원 (${S.roster.length}명)</p>
+      <input id="roster-search" placeholder="검색" style="width:100%;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderRosterList()" />
+      <div id="roster-list" style="margin-top:10px;max-height:280px;overflow:auto;"></div>
+    </div>
+    <div class="card">
+      <p style="font-weight:700;margin:0 0 8px;">단어 관리</p>
+      <button class="btn-ghost" onclick="loadDefaultWords()">기본 단어 18개 불러오기</button>
+      <div class="dashed-top">
+        <div class="grid2">
+          <div class="field"><label>단어</label><input id="w-kanji" /></div>
+          <div class="field"><label>읽는 법</label><input id="w-reading" /></div>
+        </div>
+        <div class="field"><label>뜻</label><input id="w-meaning" /></div>
+        <div class="field"><label>예문(일본어)</label><input id="w-example" /></div>
+        <div class="field"><label>예문 해석</label><input id="w-examplekr" /></div>
+        <div class="field">
+          <label>난이도</label>
+          <div class="levels" id="w-level-picker">
+            ${LEVELS.map(lv => `<button type="button" class="level-btn" data-lv="${lv}" onclick="pickWordLevel('${lv}')">${lv}</button>`).join("")}
+          </div>
+        </div>
+        <button class="btn-hanko" style="width:100%;margin-top:12px;" onclick="addSharedWord()">단어 추가</button>
+      </div>
+      <div class="dashed-top" id="shared-word-list"></div>
+    </div>
+  `;
+  window.__newWordLevel = "초급";
+  document.querySelector('#w-level-picker [data-lv="초급"]').classList.add("active");
+  renderRosterList();
+  renderSharedWordList();
+}
+function pickWordLevel(lv) {
+  window.__newWordLevel = lv;
+  document.querySelectorAll('#w-level-picker .level-btn').forEach(b => b.classList.toggle("active", b.dataset.lv === lv));
+}
+async function bulkAddRoster() {
+  const raw = document.getElementById("roster-bulk").value;
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  const msg = document.getElementById("roster-msg");
+  if (!lines.length) { msg.textContent = "입력된 내용이 없어요."; return; }
+  let batch = db.batch();
+  let count = 0, batchCount = 0;
+  for (const line of lines) {
+    const [empId, name] = line.split(",").map(s => (s || "").trim());
+    if (!empId || !name) continue;
+    const ref = db.collection("roster").doc(empId);
+    batch.set(ref, { name, role: "member", active: true }, { merge: true });
+    count++; batchCount++;
+    if (batchCount >= 400) { await batch.commit(); batch = db.batch(); batchCount = 0; }
+  }
+  if (batchCount > 0) await batch.commit();
+  msg.textContent = `${count}명을 등록했어요.`;
+  document.getElementById("roster-bulk").value = "";
+}
+function renderRosterList() {
+  const q = (document.getElementById("roster-search")?.value || "").trim().toLowerCase();
+  const box = document.getElementById("roster-list");
+  if (!box) return;
+  const rows = S.roster.filter(r => !q || r.name.toLowerCase().includes(q) || r.empId.toLowerCase().includes(q));
+  box.innerHTML = rows.map(r => `
+    <div class="rowbetween small" style="padding:6px 0;border-bottom:1px solid var(--washi-dark);">
+      <span>${escapeHtml(r.name)} <span class="muted">(${escapeHtml(r.empId)})</span> ${r.role === "leader" ? '<span style="color:var(--hanko);font-weight:700;">팀장</span>' : ""} ${r.active === false ? '<span class="muted">(비활성)</span>' : ""}</span>
+      <span style="display:flex;gap:6px;">
+        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "leader" ? "member" : "leader"}')">${r.role === "leader" ? "팀장 해제" : "팀장 지정"}</button>
+        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterActive('${r.empId}', ${r.active === false})">${r.active === false ? "활성화" : "비활성화"}</button>
+      </span>
+    </div>
+  `).join("");
+}
+function toggleRosterRole(empId, newRole) { db.collection("roster").doc(empId).set({ role: newRole }, { merge: true }); }
+function toggleRosterActive(empId, makeActive) { db.collection("roster").doc(empId).set({ active: makeActive }, { merge: true }); }
+
+function loadDefaultWords() {
+  db.collection("sharedWords").limit(1).get().then(snap => {
+    if (!snap.empty) { toast("이미 단어가 등록되어 있어요."); return; }
+    let batch = db.batch();
+    DEFAULT_WORDS.forEach(w => {
+      const { id, ...rest } = w;
+      batch.set(db.collection("sharedWords").doc(id), rest);
+    });
+    batch.commit().then(() => toast("기본 단어 18개를 불러왔어요."));
+  });
+}
+function addSharedWord() {
+  const kanji = document.getElementById("w-kanji").value.trim();
+  const reading = document.getElementById("w-reading").value.trim();
+  const meaning = document.getElementById("w-meaning").value.trim();
+  const example = document.getElementById("w-example").value.trim();
+  const exampleKo = document.getElementById("w-examplekr").value.trim();
+  if (!kanji || !reading || !meaning) { toast("단어, 읽는 법, 뜻은 필수예요."); return; }
+  db.collection("sharedWords").add({ kanji, reading, meaning, example, exampleKo, level: window.__newWordLevel })
+    .then(() => {
+      ["w-kanji", "w-reading", "w-meaning", "w-example", "w-examplekr"].forEach(id => document.getElementById(id).value = "");
+      toast("단어를 추가했어요.");
+    });
+}
+function renderSharedWordList() {
+  const box = document.getElementById("shared-word-list");
+  if (!box) return;
+  box.innerHTML = "<p class='muted small' style='margin:10px 0;'>등록된 단어 (" + S.words.length + "개)</p>" +
+    S.words.map(w => `
+      <div class="rowbetween small" style="padding:5px 0;border-bottom:1px solid var(--washi-dark);">
+        <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)} · ${escapeHtml(w.level)}</span></span>
+        ${w.id.startsWith("d") ? "" : `<button class="btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="deleteSharedWord('${w.id}')">삭제</button>`}
+      </div>
+    `).join("");
+}
+function deleteSharedWord(id) { db.collection("sharedWords").doc(id).delete(); }
+</script>
+</body>
+</html>
