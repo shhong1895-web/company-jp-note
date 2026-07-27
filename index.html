@@ -26,10 +26,9 @@
   .stamp{border:2px solid var(--hanko);color:var(--hanko);border-radius:6px;width:56px;height:56px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;}
   .stamp span{font-size:14px;font-weight:700;line-height:1;margin-top:2px;}
-  .progress-badge{border:1.5px solid var(--ink);border-radius:4px;padding:8px 12px;margin-top:14px;display:flex;
-    justify-content:space-between;align-items:center;}
-  .progress-bar-outer{background:var(--washi-dark);height:8px;border-radius:5px;overflow:hidden;flex:1;margin:0 10px;}
-  .progress-bar-inner{height:8px;background:var(--hanko);transition:width .4s;}
+  .progress-badge{border:1.5px solid var(--ink);border-radius:4px;padding:10px 12px;margin-top:14px;}
+  .progress-dot{flex:1;height:14px;border:1.5px solid var(--washi-dark);border-radius:3px;}
+  .progress-dot.filled{border-color:var(--hanko);background:var(--hanko);}
   nav.tabs{max-width:640px;margin:14px auto 0;padding:0 18px;display:flex;gap:2px;flex-wrap:wrap;}
   .tab-btn{background:none;border:none;color:var(--ink-soft);font-weight:700;font-size:13px;
     padding:8px 10px;border-bottom:3px solid transparent;display:flex;align-items:center;gap:5px;}
@@ -120,10 +119,12 @@
         </div>
         <div class="stamp"><span id="streak-num">0</span><span style="font-size:9px;">일</span></div>
       </div>
-      <div class="progress-badge">
-        <span class="small" id="progress-label">N5 수준</span>
-        <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar" style="width:0%;"></div></div>
-        <button class="btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="expandRange()">범위 넓히기</button>
+      <div class="progress-badge" style="display:block;">
+        <div class="rowbetween small" style="margin-bottom:6px;">
+          <span class="muted">학습 진행도</span>
+          <span id="progress-count" style="font-weight:700;color:var(--hanko);"></span>
+        </div>
+        <div id="progress-dots" style="display:flex;gap:4px;"></div>
       </div>
     </div>
   </header>
@@ -245,6 +246,53 @@ function progressLabel(unlocked) {
   if (unlocked <= 60) return "N3 수준";
   if (unlocked <= 80) return "N2 수준";
   return "N1 수준";
+}
+
+/* =========================================================
+   3-0. 히라가나 가상 키보드 (기기에 일본어 키보드 없어도 입력 가능)
+========================================================= */
+const HIRA_ROWS = [
+  ["あ","い","う","え","お"], ["か","き","く","け","こ"], ["さ","し","す","せ","そ"],
+  ["た","ち","つ","て","と"], ["な","に","ぬ","ね","の"], ["は","ひ","ふ","へ","ほ"],
+  ["ま","み","む","め","も"], ["や","","ゆ","","よ"], ["ら","り","る","れ","ろ"],
+  ["わ","","を","","ん"], ["が","ぎ","ぐ","げ","ご"], ["ざ","じ","ず","ぜ","ぞ"],
+  ["だ","ぢ","づ","で","ど"], ["ば","び","ぶ","べ","ぼ"], ["ぱ","ぴ","ぷ","ぺ","ぽ"],
+  ["っ","ゃ","ゅ","ょ","ー"]
+];
+function hiraganaKeyboardHtml(inputId) {
+  const rows = HIRA_ROWS.map(row => `
+    <div style="display:flex;gap:3px;margin-bottom:3px;">
+      ${row.map(ch => ch
+        ? `<button type="button" onclick="insertHiragana('${inputId}','${ch}')" style="flex:1;padding:6px 0;font-size:14px;border:1px solid var(--washi-dark);border-radius:3px;background:#fff;">${ch}</button>`
+        : `<div style="flex:1;"></div>`
+      ).join("")}
+    </div>`).join("");
+  return `
+    <div style="margin-top:8px;">
+      ${rows}
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button type="button" onclick="insertHiragana('${inputId}',' ')" style="flex:2;padding:6px 0;font-size:12px;border:1px solid var(--washi-dark);border-radius:3px;background:#fff;">공백</button>
+        <button type="button" onclick="backspaceInput('${inputId}')" style="flex:1;padding:6px 0;font-size:12px;border:1px solid var(--washi-dark);border-radius:3px;background:#fff;">⌫</button>
+      </div>
+    </div>`;
+}
+function insertHiragana(inputId, ch) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  const start = inp.selectionStart ?? inp.value.length;
+  const end = inp.selectionEnd ?? inp.value.length;
+  inp.value = inp.value.slice(0, start) + ch + inp.value.slice(end);
+  const pos = start + ch.length;
+  inp.focus(); inp.setSelectionRange(pos, pos);
+}
+function backspaceInput(inputId) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  const start = inp.selectionStart ?? inp.value.length;
+  const end = inp.selectionEnd ?? inp.value.length;
+  if (start === end && start > 0) { inp.value = inp.value.slice(0, start - 1) + inp.value.slice(end); inp.setSelectionRange(start - 1, start - 1); }
+  else { inp.value = inp.value.slice(0, start) + inp.value.slice(end); inp.setSelectionRange(start, start); }
+  inp.focus();
 }
 
 /* =========================================================
@@ -373,15 +421,14 @@ function enterApp() {
   renderTabNav();
   setupListeners();
 }
-function expandRange() {
-  const next = Math.min(100, (S.progress.unlocked || 20) + 10);
-  db.collection("progress").doc(S.uid).set({ unlocked: next }, { merge: true });
-  toast("학습 범위를 넓혔어요.");
-}
 function renderProgressBadge() {
   const u = S.progress.unlocked || 20;
-  document.getElementById("progress-label").textContent = progressLabel(u);
-  document.getElementById("progress-bar").style.width = u + "%";
+  const total = S.words.length || 1;
+  const learnable = unlockedWords().length;
+  document.getElementById("progress-count").textContent = `${learnable} / ${total}개`;
+  const dotsBox = document.getElementById("progress-dots");
+  const filled = Math.round((u / 100) * 10);
+  dotsBox.innerHTML = Array.from({ length: 10 }, (_, i) => `<div class="progress-dot ${i < filled ? "filled" : ""}"></div>`).join("");
   document.getElementById("streak-num").textContent = S.progress.streak || 0;
 }
 
@@ -497,7 +544,6 @@ function renderStudyTab(c) {
   c.innerHTML = `
     <div class="rowbetween small muted" style="margin-bottom:10px;">
       <span>${S.studyIdx + 1} / ${words.length}</span>
-      <span class="jlpt-tag">${escapeHtml(w.jlpt || "")}</span>
     </div>
     <div class="card">
       ${kanjiRowHtml(w.kanji, 68)}
@@ -531,6 +577,14 @@ function revealWord() {
     <div class="dashed-top" style="text-align:left;">
       <p style="margin:0;">${escapeHtml(w.example || "")}</p>
       <p class="muted" style="margin:4px 0 0;">${escapeHtml(w.exampleKo || "")}</p>
+      ${w.example ? `
+        <div class="rowbetween" style="margin-top:10px;gap:8px;">
+          <button class="btn-ghost" style="flex:1;" onclick="speak('${escapeHtml(w.example)}')">🔊 예문 듣기</button>
+          <button class="icon-btn" style="flex:1;" id="sentence-pron-btn" onclick="practiceSentence('${w.id}', '${escapeHtml(w.example)}')">🎙<span>예문 통째로 말하기</span></button>
+        </div>
+        <div id="sentence-pron-result"></div>
+        <p class="muted small" style="margin-top:6px;">단어 하나만 읽는 것보다, 문장 전체를 말해보는 게 실제 회화 실력 향상에 더 도움이 돼요.</p>
+      ` : ""}
     </div>
   `;
 }
@@ -586,6 +640,53 @@ function practicePron(wordId, reading, kanji) {
   );
 }
 
+/* 예문(문장) 통째로 말하기 연습: 단어 하나 발음이 아니라 실제 문장 발화 연습 */
+function practiceSentence(wordId, sentence) {
+  const resultBox = document.getElementById("sentence-pron-result");
+  if (SR_SUPPORTED) {
+    resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">듣고 있어요... 문장을 말해보세요.</p>`;
+    listenPronunciation(
+      (alts) => {
+        let best = 0;
+        alts.forEach(a => { best = Math.max(best, similarity(a, sentence)); });
+        const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0, pronAttempts: 0, pronScoreSum: 0, sentenceAttempts: 0, sentenceScoreSum: 0 };
+        bumpWordStat(wordId, { sentenceAttempts: (cur.sentenceAttempts || 0) + 1, sentenceScoreSum: (cur.sentenceScoreSum || 0) + best });
+        const color = best >= 65 ? "var(--sage)" : best >= 40 ? "var(--amber)" : "var(--hanko)";
+        const msg = best >= 65 ? "문장을 잘 말했어요! 👏" : best >= 40 ? "어느 정도 통했어요. 다시 한 번 또박또박 말해보세요." : "문장이 길어서 어려울 수 있어요. 끊어서 천천히 말해보세요.";
+        resultBox.innerHTML = `
+          <div class="scorebar" style="margin-top:10px;"><div style="width:${best}%;background:${color};"></div></div>
+          <p class="small center" style="color:${color};font-weight:700;margin-top:4px;">문장 발화 유사도 ${best}%</p>
+          <p class="muted small center">${msg}</p>
+        `;
+      },
+      (errMsg) => { resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">${escapeHtml(errMsg)}</p>`; }
+    );
+    return;
+  }
+  if (!MR_SUPPORTED) {
+    resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">이 브라우저에서는 말하기 연습 기능을 사용할 수 없어요.</p>`;
+    return;
+  }
+  resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">🔴 녹음 중... (버튼을 다시 누르면 정지)</p>`;
+  const btn = document.getElementById("sentence-pron-btn");
+  btn.onclick = () => { stopRecording(); btn.onclick = () => practiceSentence(wordId, sentence); };
+  startRecording(
+    (audioUrl) => {
+      const cur = S.wordStats[wordId] || { sentenceAttempts: 0 };
+      bumpWordStat(wordId, { sentenceAttempts: (cur.sentenceAttempts || 0) + 1 });
+      resultBox.innerHTML = `
+        <p class="muted small center" style="margin-top:10px;">자동 채점은 지원하지 않는 브라우저예요. 녹음한 내 발화와 정확한 문장을 비교해보세요.</p>
+        <audio controls src="${audioUrl}"></audio>
+        <div class="rowbetween" style="margin-top:8px;gap:8px;">
+          <button class="btn-ghost" style="flex:1;" onclick="speak('${escapeHtml(sentence)}')">🔊 정확한 문장 듣기</button>
+          <button class="btn-sage" style="flex:1;" onclick="toast('말하기 연습을 기록했어요!')">비교 완료</button>
+        </div>
+      `;
+    },
+    (errMsg) => { resultBox.innerHTML = `<p class="muted small center" style="margin-top:10px;">${escapeHtml(errMsg)}</p>`; }
+  );
+}
+
 /* =========================================================
    10. 퀴즈 탭 (unlocked 범위 기반, 자동 난이도 상승)
 ========================================================= */
@@ -617,7 +718,7 @@ function renderQuizTab(c) {
   if (!S.quiz) {
     c.innerHTML = `
       <div class="card-soft">
-        <p style="font-weight:700;margin:0 0 4px;">${progressLabel(S.progress.unlocked || 20)} 맞춤 퀴즈 (8문제)</p>
+        <p style="font-weight:700;margin:0 0 4px;">오늘의 맞춤 퀴즈 (8문제)</p>
         <p class="muted small" style="margin:0 0 18px;">현재까지 학습 가능 범위(${words.length}개 단어) 안에서 출제돼요. 정답률이 좋으면 범위가 자동으로 넓어져요.</p>
         <button class="btn-main" onclick="startQuiz()">퀴즈 시작하기</button>
       </div>`;
@@ -637,6 +738,7 @@ function renderQuizTab(c) {
     bodyHtml = `
       <input id="typing-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
         placeholder="${q.qType === "meaning" ? "한국어 뜻을 입력하세요" : "히라가나로 읽는 법을 입력하세요"}" ${S.quiz.selected ? "disabled" : ""} />
+      ${q.qType === "reading" && !S.quiz.selected ? hiraganaKeyboardHtml("typing-input") : ""}
       <button class="btn-main" style="width:100%;margin-top:10px;" onclick="submitTyping()" ${S.quiz.selected ? "disabled" : ""}>제출</button>
     `;
   }
@@ -645,8 +747,7 @@ function renderQuizTab(c) {
       <span>${S.quiz.idx + 1} / ${S.quiz.questions.length}</span><span>점수 ${S.quiz.score}</span>
     </div>
     <div class="card">
-      <p class="muted small" style="font-weight:700;margin:0 0 8px;">${q.qType === "meaning" ? "이 단어의 뜻은?" : "이 단어의 읽는 법은?"}${q.mode === "typing" ? " (직접 입력)" : ""}
-        <span class="jlpt-tag" style="margin-left:6px;">${escapeHtml(q.word.jlpt || "")}</span></p>
+      <p class="muted small" style="font-weight:700;margin:0 0 8px;">${q.qType === "meaning" ? "이 단어의 뜻은?" : "이 단어의 읽는 법은?"}${q.mode === "typing" ? " (직접 입력)" : ""}</p>
       ${kanjiRowHtml(q.word.kanji, 56)}
       ${bodyHtml}
       <div id="quiz-feedback"></div>
@@ -733,10 +834,26 @@ function renderWriteTab(c) {
   if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
   if (S.studyIdx >= words.length) S.studyIdx = 0;
   const w = words[S.studyIdx];
+  const mode = S.writeMode || "hand";
   c.innerHTML = `
     <div class="rowbetween small muted" style="margin-bottom:10px;">
-      <span>${S.studyIdx + 1} / ${words.length}</span><span>${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span>
+      <span>${S.studyIdx + 1} / ${words.length}</span><span>${escapeHtml(w.meaning)}</span>
     </div>
+    <div class="rowbetween" style="margin-bottom:12px;gap:6px;">
+      <button class="btn-ghost" style="flex:1;${mode === "hand" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setWriteMode('hand')">✍️ 손글씨</button>
+      <button class="btn-ghost" style="flex:1;${mode === "type" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setWriteMode('type')">⌨️ 키보드 타이핑</button>
+    </div>
+    ${mode === "hand" ? writeHandHtml(w) : writeTypeHtml(w)}
+    <div class="rowbetween" style="margin-top:20px;">
+      <button class="btn-ghost" onclick="writeNav(-1)">◀ 이전 단어</button>
+      <button class="btn-ghost" onclick="writeNav(1)">다음 단어 ▶</button>
+    </div>
+  `;
+  if (mode === "hand") setupCanvas();
+}
+function setWriteMode(mode) { S.writeMode = mode; renderWriteTab(document.getElementById("tab-content")); }
+function writeHandHtml(w) {
+  return `
     <div class="canvas-wrap">
       <div class="canvas-guide">${escapeHtml(w.kanji[0] || "")}</div>
       <canvas id="write-canvas" width="300" height="300"></canvas>
@@ -749,12 +866,30 @@ function renderWriteTab(c) {
       <button class="btn-sage" style="flex:1;" onclick="finishWriting('${w.id}', true)">잘 썼어요 👍</button>
       <button class="btn-ghost" style="flex:1;" onclick="finishWriting('${w.id}', false)">다시 연습</button>
     </div>
-    <div class="rowbetween" style="margin-top:20px;">
-      <button class="btn-ghost" onclick="writeNav(-1)">◀ 이전 글자</button>
-      <button class="btn-ghost" onclick="writeNav(1)">다음 글자 ▶</button>
+  `;
+}
+function writeTypeHtml(w) {
+  return `
+    <div class="card">
+      ${kanjiRowHtml(w.kanji, 56)}
+      <input id="write-type-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
+        placeholder="히라가나로 읽는 법을 키보드로 입력해보세요" />
+      ${hiraganaKeyboardHtml("write-type-input")}
+      <button class="btn-main" style="width:100%;margin-top:12px;" onclick="checkWriteType('${w.id}', '${escapeHtml(w.reading)}')">채점하기</button>
+      <div id="write-type-result"></div>
     </div>
   `;
-  setupCanvas();
+}
+function checkWriteType(wordId, reading) {
+  const val = document.getElementById("write-type-input").value.trim();
+  const score = similarity(val, reading);
+  const correct = score >= 80;
+  const box = document.getElementById("write-type-result");
+  const color = correct ? "var(--sage)" : "var(--hanko)";
+  box.innerHTML = `<p style="color:${color};font-weight:700;margin-top:10px;">${correct ? "정답이에요! ✅" : "다시 확인해보세요. 정답: " + escapeHtml(reading)}</p>`;
+  const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0 };
+  bumpWordStat(wordId, { quizAttempts: cur.quizAttempts + 1, quizCorrect: cur.quizCorrect + (correct ? 1 : 0) });
+  markActivity();
 }
 function writeNav(d) {
   const words = unlockedWords();
@@ -805,7 +940,7 @@ function renderRecordTab(c) {
     </div>
     <div class="card" style="margin-bottom:16px;">
       <p style="font-weight:700;margin:0 0 6px;">현재 학습 범위</p>
-      <p style="font-size:22px;font-weight:700;color:var(--hanko);margin:0;">${progressLabel(S.progress.unlocked || 20)}</p>
+      <p style="font-size:22px;font-weight:700;color:var(--hanko);margin:0;">${unlockedWords().length} / ${S.words.length}개 학습 가능</p>
       <p class="muted small">전체 퀴즈 정답률 ${acc}% (누적 ${S.progress.quizCount || 0}회) · 학습 가능 단어 ${unlockedWords().length}개</p>
     </div>
     <div class="card">
