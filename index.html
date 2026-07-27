@@ -647,7 +647,6 @@ function dailyWordDetailHtml(w, p) {
 
       <p class="small" style="font-weight:700;margin:14px 0 4px;">③ 히라가나로 쓰기 (${p.typePass || 0}/3)</p>
       <input id="daily-type-input-${w.id}" style="width:100%;padding:8px;border:1.5px solid var(--ink);border-radius:3px;font-size:15px;" placeholder="히라가나로 읽는 법을 입력하세요" />
-      ${hiraganaKeyboardHtml("daily-type-input-" + w.id)}
       <button class="btn-main" style="width:100%;margin-top:8px;" onclick="dailyType('${w.id}','${escapeHtml(w.reading)}')">채점하기</button>
       <div id="daily-type-result-${w.id}"></div>
     </div>
@@ -941,7 +940,6 @@ function quizQuestionCardHtml() {
     bodyHtml = `
       <input id="typing-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
         placeholder="${q.qType === "meaning" ? "한국어 뜻을 입력하세요" : "히라가나로 읽는 법을 입력하세요"}" ${S.quiz.selected ? "disabled" : ""} />
-      ${q.qType === "reading" && !S.quiz.selected ? hiraganaKeyboardHtml("typing-input") : ""}
       <button class="btn-main" style="width:100%;margin-top:10px;" onclick="submitTyping()" ${S.quiz.selected ? "disabled" : ""}>제출</button>
     `;
   }
@@ -1106,7 +1104,6 @@ function writeTypeHtml(w) {
       ${kanjiRowHtml(w.kanji, 56)}
       <input id="write-type-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
         placeholder="히라가나로 읽는 법을 키보드로 입력해보세요" />
-      ${hiraganaKeyboardHtml("write-type-input")}
       <button class="btn-main" style="width:100%;margin-top:12px;" onclick="checkWriteType('${w.id}', '${escapeHtml(w.reading)}')">채점하기</button>
       <div id="write-type-result"></div>
     </div>
