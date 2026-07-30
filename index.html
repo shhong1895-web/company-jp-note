@@ -373,12 +373,36 @@ auth.onAuthStateChanged(async (user) => {
   if (!user) { try { await auth.signInAnonymously(); } catch (e) { console.error(e); } return; }
   S.uid = user.uid;
   const doc = await db.collection("users").doc(S.uid).get().catch(() => null);
-  if (doc && doc.exists) { S.user = doc.data(); enterApp(); }
+  if (doc && doc.exists) {
+    S.user = doc.data();
+    await syncRoleFromRoster();
+    enterApp();
+  }
   else {
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("login-screen").classList.remove("hidden");
   }
 });
+/* roster가 최신 기준(source of truth). 팀장 지정/팀 변경이 있었는데 내 users/progress 문서가
+   과거 값을 그대로 갖고 있을 수 있으므로, 로그인할 때마다 roster와 대조해서 항상 맞춰준다. */
+async function syncRoleFromRoster() {
+  try {
+    if (!S.user || !S.user.empId) return;
+    const rosterDoc = await db.collection("roster").doc(S.user.empId).get();
+    if (!rosterDoc.exists) return;
+    const r = rosterDoc.data();
+    const freshRole = r.role || "member";
+    const freshTeam = r.team || "미배정";
+    if (S.user.role !== freshRole || S.user.team !== freshTeam) {
+      const patch = { role: freshRole, team: freshTeam };
+      await Promise.all([
+        db.collection("users").doc(S.uid).set(patch, { merge: true }),
+        db.collection("progress").doc(S.uid).set(patch, { merge: true })
+      ]);
+      S.user = { ...S.user, ...patch };
+    }
+  } catch (e) { console.error("syncRoleFromRoster", e); }
+}
 
 async function handleLogin() {
   const empId = document.getElementById("login-empid").value.trim();
