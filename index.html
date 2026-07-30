@@ -468,7 +468,7 @@ function setupListeners() {
     const custom = [];
     snap.forEach(d => custom.push({ id: d.id, ...d.data() }));
     S.words = custom.length ? custom : [...DEFAULT_WORDS];
-    if (["study", "quiz", "write", "admin"].includes(S.tab)) renderTab();
+    if (["study", "quiz", "daily", "admin"].includes(S.tab)) renderTab();
   }, err => console.error("sharedWords listener", err));
 
   db.collection("progress").doc(S.uid).onSnapshot(doc => {
@@ -540,7 +540,7 @@ function bumpWordStat(wordId, patch) {
 function renderTabNav() {
   const tabs = [
     { id: "daily", label: "오늘의 학습" }, { id: "study", label: "자유학습" }, { id: "quiz", label: "퀴즈" },
-    { id: "write", label: "쓰기연습" }, { id: "record", label: "기록" }
+    { id: "record", label: "기록" }
   ];
   if (S.user.role === "leader" || S.user.role === "director") { tabs.push({ id: "team", label: "팀현황" }); tabs.push({ id: "admin", label: "관리" }); }
   const nav = document.getElementById("tab-nav");
@@ -552,7 +552,6 @@ function renderTab() {
   if (S.tab === "daily") return renderDailyTab(c);
   if (S.tab === "study") return renderStudyTab(c);
   if (S.tab === "quiz") return renderQuizTab(c);
-  if (S.tab === "write") return renderWriteTab(c);
   if (S.tab === "record") return renderRecordTab(c);
   if (S.tab === "team") return renderTeamTab(c);
   if (S.tab === "admin") return renderAdminTab(c);
@@ -566,7 +565,7 @@ function ensureDailySession() {
   if (S.progress.daily && S.progress.daily.date === today) return;
   const batch = todaysBatchWords();
   const daily = { date: today, wordIds: batch.map(w => w.id), perWord: {}, completed: false };
-  batch.forEach(w => { daily.perWord[w.id] = { listen: 0, speakPass: 0, typePass: 0 }; });
+  batch.forEach(w => { daily.perWord[w.id] = { listen: 0, typePass: 0 }; });
   S.progress.daily = daily;
   db.collection("progress").doc(S.uid).set({ daily }, { merge: true }).catch(e => console.error(e));
 }
@@ -577,7 +576,7 @@ function setDailyWordCount(n) {
 function incrementDailyStep(wordId, field) {
   const daily = S.progress.daily;
   if (!daily || daily.date !== todayStr()) return;
-  const p = daily.perWord[wordId] || { listen: 0, speakPass: 0, typePass: 0 };
+  const p = daily.perWord[wordId] || { listen: 0, typePass: 0 };
   p[field] = Math.min(3, (p[field] || 0) + 1);
   daily.perWord[wordId] = p;
   db.collection("progress").doc(S.uid).set({ daily }, { merge: true }).catch(e => console.error(e));
@@ -588,7 +587,7 @@ function dailyAllStepsDone() {
   if (!daily) return false;
   return daily.wordIds.every(id => {
     const p = daily.perWord[id] || {};
-    return (p.listen || 0) >= 3 && (p.speakPass || 0) >= 3 && (p.typePass || 0) >= 3;
+    return (p.listen || 0) >= 3 && (p.typePass || 0) >= 3;
   });
 }
 function completeDailySession() {
@@ -633,11 +632,11 @@ function renderDailyTab(c) {
     return;
   }
   const words = daily.wordIds.map(id => S.words.find(w => w.id === id)).filter(Boolean);
-  html += words.map(w => dailyWordCardHtml(w, daily.perWord[w.id] || { listen: 0, speakPass: 0, typePass: 0 })).join("");
+  html += words.map(w => dailyWordCardHtml(w, daily.perWord[w.id] || { listen: 0, typePass: 0 })).join("");
   if (dailyAllStepsDone()) {
     html += `<div class="card-soft" style="margin-top:14px;"><p style="font-weight:700;margin:0 0 10px;">오늘의 단어를 모두 연습했어요!</p><button class="btn-hanko" onclick="startDailyQuiz()">퀴즈로 오늘 학습 마무리하기</button></div>`;
   } else {
-    html += `<p class="muted small center" style="margin-top:10px;">각 단어의 듣기·말하기·쓰기를 3번씩 완료하면 마무리 퀴즈가 열려요.</p>`;
+    html += `<p class="muted small center" style="margin-top:10px;">각 단어의 듣기·쓰기를 3번씩 완료하면 마무리 퀴즈가 열려요.</p>`;
   }
   c.innerHTML = html;
 }
@@ -655,7 +654,7 @@ function dailyWordCardHtml(w, p) {
           <span class="muted small" style="margin-left:6px;">${escapeHtml(w.meaning)}</span>
         </div>
         <div style="display:flex;gap:8px;">
-          ${stepChip("듣기", p.listen || 0)}${stepChip("말하기", p.speakPass || 0)}${stepChip("쓰기", p.typePass || 0)}
+          ${stepChip("듣기", p.listen || 0)}${stepChip("쓰기", p.typePass || 0)}
         </div>
       </div>
       ${active ? dailyWordDetailHtml(w, p) : ""}
@@ -676,11 +675,7 @@ function dailyWordDetailHtml(w, p) {
       <p class="small" style="font-weight:700;margin:14px 0 4px;">① 듣기 (${p.listen || 0}/3)</p>
       <button class="btn-ghost" style="width:100%;" onclick="dailyListen('${w.id}','${escapeHtml(w.kanji)}')">🔊 듣기</button>
 
-      <p class="small" style="font-weight:700;margin:14px 0 4px;">② 말하기 (80점 이상 ${p.speakPass || 0}/3)</p>
-      <button class="btn-ghost" style="width:100%;" id="daily-speak-btn-${w.id}" onclick="dailySpeak('${w.id}','${escapeHtml(w.reading)}','${escapeHtml(w.kanji)}')">🎙 말하기 연습</button>
-      <div id="daily-speak-result-${w.id}"></div>
-
-      <p class="small" style="font-weight:700;margin:14px 0 4px;">③ 히라가나로 쓰기 (${p.typePass || 0}/3)</p>
+      <p class="small" style="font-weight:700;margin:14px 0 4px;">② 히라가나로 쓰기 (${p.typePass || 0}/3)</p>
       <input id="daily-type-input-${w.id}" style="width:100%;padding:8px;border:1.5px solid var(--ink);border-radius:3px;font-size:15px;" placeholder="히라가나로 읽는 법을 입력하세요" />
       <button class="btn-main" style="width:100%;margin-top:8px;" onclick="dailyType('${w.id}','${escapeHtml(w.reading)}')">채점하기</button>
       <div id="daily-type-result-${w.id}"></div>
@@ -688,39 +683,6 @@ function dailyWordDetailHtml(w, p) {
   `;
 }
 function dailyListen(wordId, kanji) { speak(kanji); incrementDailyStep(wordId, "listen"); }
-function dailySpeak(wordId, reading, kanji) {
-  const resultBox = document.getElementById(`daily-speak-result-${wordId}`);
-  if (!SR_SUPPORTED) {
-    if (!MR_SUPPORTED) { resultBox.innerHTML = `<p class="muted small">이 브라우저에서는 말하기 연습을 사용할 수 없어요.</p>`; return; }
-    resultBox.innerHTML = `<p class="muted small">🔴 녹음 중... (다시 누르면 정지)</p>`;
-    const btn = document.getElementById(`daily-speak-btn-${wordId}`);
-    btn.onclick = () => { stopRecording(); btn.onclick = () => dailySpeak(wordId, reading, kanji); };
-    startRecording(
-      (audioUrl) => {
-        resultBox.innerHTML = `
-          <p class="muted small">자동 채점 미지원 브라우저예요. 비교해보고 잘 됐으면 완료를 눌러주세요.</p>
-          <audio controls src="${audioUrl}"></audio>
-          <button class="btn-sage" style="width:100%;margin-top:6px;" onclick="incrementDailyStep('${wordId}','speakPass');toast('말하기 완료로 기록했어요!')">비교 후 완료</button>
-        `;
-      },
-      (errMsg) => { resultBox.innerHTML = `<p class="muted small">${escapeHtml(errMsg)}</p>`; }
-    );
-    return;
-  }
-  resultBox.innerHTML = `<p class="muted small">듣고 있어요...</p>`;
-  listenPronunciation(
-    (alts) => {
-      let best = 0;
-      alts.forEach(a => { best = Math.max(best, similarity(a, reading), similarity(a, kanji)); });
-      const cur = S.wordStats[wordId] || { pronAttempts: 0, pronScoreSum: 0 };
-      bumpWordStat(wordId, { pronAttempts: (cur.pronAttempts || 0) + 1, pronScoreSum: (cur.pronScoreSum || 0) + best });
-      const color = best >= 80 ? "var(--sage)" : "var(--hanko)";
-      resultBox.innerHTML = `<p class="small" style="color:${color};font-weight:700;">${best}점 ${best >= 80 ? "- 통과! ✅" : "- 80점 이상이 필요해요"}</p>`;
-      if (best >= 80) incrementDailyStep(wordId, "speakPass");
-    },
-    (errMsg) => { resultBox.innerHTML = `<p class="muted small">${escapeHtml(errMsg)}</p>`; }
-  );
-}
 function dailyType(wordId, reading) {
   const val = document.getElementById(`daily-type-input-${wordId}`).value.trim();
   const score = similarity(val, reading);
@@ -759,15 +721,30 @@ function todaysBatchWords() {
 }
 function emptyStateHtml() { return `<div class="card-soft"><p class="muted small">아직 학습 가능한 단어가 없어요. 관리 탭에서 단어를 등록해보세요.</p></div>`; }
 
+function wordCanvasSize(kanji) {
+  const w = Math.min(650, Math.max(260, kanji.length * 130));
+  return { w, h: 170 };
+}
 function renderStudyTab(c) {
   const words = unlockedWords();
   if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
   if (S.studyIdx >= words.length) S.studyIdx = 0;
   const w = words[S.studyIdx];
+  const mode = S.studyMode || "card";
   c.innerHTML = `
-    <div class="rowbetween small muted" style="margin-bottom:10px;">
-      <span>${S.studyIdx + 1} / ${words.length}</span>
+    <div class="rowbetween" style="margin-bottom:12px;gap:6px;">
+      <button class="btn-ghost" style="flex:1;${mode === "card" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setStudyMode('card')">📖 카드학습</button>
+      <button class="btn-ghost" style="flex:1;${mode === "hand" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setStudyMode('hand')">✍️ 손글씨 연습</button>
     </div>
+    ${mode === "card" ? studyCardHtml(w, words.length) : studyHandHtml(w, words.length)}
+  `;
+  window.__currentStudyWord = w;
+  if (mode === "hand") setupCanvas();
+}
+function setStudyMode(mode) { S.studyMode = mode; renderStudyTab(document.getElementById("tab-content")); }
+function studyCardHtml(w, total) {
+  return `
+    <div class="rowbetween small muted" style="margin-bottom:10px;"><span>${S.studyIdx + 1} / ${total}</span></div>
     <div class="card">
       ${kanjiRowHtml(w.kanji, 68)}
       <div class="center" style="display:flex;gap:10px;justify-content:center;margin-top:16px;">
@@ -785,7 +762,29 @@ function renderStudyTab(c) {
       <button class="btn-ghost" onclick="studyNav(1)">다음 ▶</button>
     </div>
   `;
-  window.__currentStudyWord = w;
+}
+function studyHandHtml(w, total) {
+  const size = wordCanvasSize(w.kanji);
+  const fontPx = Math.floor(size.w / w.kanji.length * 0.7);
+  return `
+    <div class="rowbetween small muted" style="margin-bottom:10px;"><span>${S.studyIdx + 1} / ${total}</span><span>${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span></div>
+    <div class="canvas-wrap" style="width:${size.w}px;height:${size.h}px;">
+      <div class="canvas-guide" style="width:${size.w}px;height:${size.h}px;font-size:${fontPx}px;">${escapeHtml(w.kanji)}</div>
+      <canvas id="write-canvas" width="${size.w}" height="${size.h}"></canvas>
+    </div>
+    <div class="rowbetween" style="max-width:${size.w}px;margin:14px auto 0;">
+      <button class="btn-ghost" onclick="clearCanvas()">지우기 🧹</button>
+      <button class="btn-ghost" onclick="speak('${escapeHtml(w.kanji)}')">🔊 발음듣기</button>
+    </div>
+    <div class="rowbetween" style="max-width:${size.w}px;margin:14px auto 0;gap:8px;">
+      <button class="btn-sage" style="flex:1;" onclick="finishWriting('${w.id}', true)">잘 썼어요 👍</button>
+      <button class="btn-ghost" style="flex:1;" onclick="finishWriting('${w.id}', false)">다시 연습</button>
+    </div>
+    <div class="rowbetween" style="margin-top:20px;">
+      <button class="btn-ghost" onclick="studyNav(-1)">◀ 이전 단어</button>
+      <button class="btn-ghost" onclick="studyNav(1)">다음 단어 ▶</button>
+    </div>
+  `;
 }
 function studyNav(d) {
   const words = unlockedWords();
@@ -1091,75 +1090,9 @@ function renderQuizResult(c) {
 }
 
 /* =========================================================
-   11. 쓰기 연습 탭
+   11. 손글씨 캔버스 유틸 (자유학습 탭의 손글씨 모드에서 사용)
 ========================================================= */
 let drawing = false, canvasCtx = null;
-function renderWriteTab(c) {
-  const words = unlockedWords();
-  if (!words.length) { c.innerHTML = emptyStateHtml(); return; }
-  if (S.studyIdx >= words.length) S.studyIdx = 0;
-  const w = words[S.studyIdx];
-  const mode = S.writeMode || "hand";
-  c.innerHTML = `
-    <div class="rowbetween small muted" style="margin-bottom:10px;">
-      <span>${S.studyIdx + 1} / ${words.length}</span><span>${escapeHtml(w.meaning)}</span>
-    </div>
-    <div class="rowbetween" style="margin-bottom:12px;gap:6px;">
-      <button class="btn-ghost" style="flex:1;${mode === "hand" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setWriteMode('hand')">✍️ 손글씨</button>
-      <button class="btn-ghost" style="flex:1;${mode === "type" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setWriteMode('type')">⌨️ 키보드 타이핑</button>
-    </div>
-    ${mode === "hand" ? writeHandHtml(w) : writeTypeHtml(w)}
-    <div class="rowbetween" style="margin-top:20px;">
-      <button class="btn-ghost" onclick="writeNav(-1)">◀ 이전 단어</button>
-      <button class="btn-ghost" onclick="writeNav(1)">다음 단어 ▶</button>
-    </div>
-  `;
-  if (mode === "hand") setupCanvas();
-}
-function setWriteMode(mode) { S.writeMode = mode; renderWriteTab(document.getElementById("tab-content")); }
-function writeHandHtml(w) {
-  return `
-    <div class="canvas-wrap">
-      <div class="canvas-guide">${escapeHtml(w.kanji[0] || "")}</div>
-      <canvas id="write-canvas" width="300" height="300"></canvas>
-    </div>
-    <div class="rowbetween" style="max-width:300px;margin:14px auto 0;">
-      <button class="btn-ghost" onclick="clearCanvas()">지우기 🧹</button>
-      <button class="btn-ghost" onclick="speak('${escapeHtml(w.kanji)}')">🔊 발음듣기</button>
-    </div>
-    <div class="rowbetween" style="max-width:300px;margin:14px auto 0;gap:8px;">
-      <button class="btn-sage" style="flex:1;" onclick="finishWriting('${w.id}', true)">잘 썼어요 👍</button>
-      <button class="btn-ghost" style="flex:1;" onclick="finishWriting('${w.id}', false)">다시 연습</button>
-    </div>
-  `;
-}
-function writeTypeHtml(w) {
-  return `
-    <div class="card">
-      ${kanjiRowHtml(w.kanji, 56)}
-      <input id="write-type-input" style="width:100%;margin-top:14px;padding:10px;border:1.5px solid var(--ink);border-radius:3px;font-size:16px;"
-        placeholder="히라가나로 읽는 법을 키보드로 입력해보세요" />
-      <button class="btn-main" style="width:100%;margin-top:12px;" onclick="checkWriteType('${w.id}', '${escapeHtml(w.reading)}')">채점하기</button>
-      <div id="write-type-result"></div>
-    </div>
-  `;
-}
-function checkWriteType(wordId, reading) {
-  const val = document.getElementById("write-type-input").value.trim();
-  const score = similarity(val, reading);
-  const correct = score >= 80;
-  const box = document.getElementById("write-type-result");
-  const color = correct ? "var(--sage)" : "var(--hanko)";
-  box.innerHTML = `<p style="color:${color};font-weight:700;margin-top:10px;">${correct ? "정답이에요! ✅" : "다시 확인해보세요. 정답: " + escapeHtml(reading)}</p>`;
-  const cur = S.wordStats[wordId] || { quizAttempts: 0, quizCorrect: 0 };
-  bumpWordStat(wordId, { quizAttempts: cur.quizAttempts + 1, quizCorrect: cur.quizCorrect + (correct ? 1 : 0) });
-  markActivity();
-}
-function writeNav(d) {
-  const words = unlockedWords();
-  S.studyIdx = (S.studyIdx + d + words.length) % words.length;
-  renderWriteTab(document.getElementById("tab-content"));
-}
 function setupCanvas() {
   const canvas = document.getElementById("write-canvas");
   if (!canvas) return;
