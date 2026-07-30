@@ -403,7 +403,7 @@ async function handleLogin() {
       lastActive: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     await db.collection("progress").doc(S.uid).set({
-      empId, name: rdata.name, team: rdata.team || "미배정",
+      empId, name: rdata.name, team: rdata.team || "미배정", role: rdata.role || "member",
       streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, masteredCount: 0, dailyWordCount: 3
     }, { merge: true });
     const doc = await db.collection("users").doc(S.uid).get();
@@ -1372,10 +1372,29 @@ function renderRosterList() {
 }
 function promptChangeTeam(empId, currentTeam) {
   const next = prompt("새 팀 이름을 입력하세요.", currentTeam || "");
-  if (next && next.trim()) db.collection("roster").doc(empId).set({ team: next.trim() }, { merge: true });
+  if (!next || !next.trim()) return;
+  const team = next.trim();
+  db.collection("roster").doc(empId).set({ team }, { merge: true });
+  propagateToExisting(empId, { team });
 }
-function toggleRosterRole(empId, newRole) { db.collection("roster").doc(empId).set({ role: newRole }, { merge: true }); }
+function toggleRosterRole(empId, newRole) {
+  db.collection("roster").doc(empId).set({ role: newRole }, { merge: true });
+  propagateToExisting(empId, { role: newRole });
+}
 function toggleRosterActive(empId, makeActive) { db.collection("roster").doc(empId).set({ active: makeActive }, { merge: true }); }
+/* 이미 로그인해서 users/progress 문서를 만든 사람의 역할/팀이 바뀌면, 기존 문서에도 반영 */
+async function propagateToExisting(empId, patch) {
+  try {
+    const [usersSnap, progressSnap] = await Promise.all([
+      db.collection("users").where("empId", "==", empId).get(),
+      db.collection("progress").where("empId", "==", empId).get()
+    ]);
+    const batch = db.batch();
+    usersSnap.forEach(d => batch.set(d.ref, patch, { merge: true }));
+    progressSnap.forEach(d => batch.set(d.ref, patch, { merge: true }));
+    if (!usersSnap.empty || !progressSnap.empty) await batch.commit();
+  } catch (e) { console.error("propagateToExisting", e); }
+}
 
 function loadDefaultWords() {
   db.collection("sharedWords").limit(1).get().then(snap => {
