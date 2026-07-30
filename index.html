@@ -1259,6 +1259,7 @@ function renderAdminTab(c) {
     <div class="card">
       <p style="font-weight:700;margin:0 0 8px;">단어 관리 (전사 공통)</p>
       <button class="btn-ghost" onclick="loadDefaultWords()">기본 단어 18개 불러오기</button>
+      <button class="btn-ghost" style="border-color:var(--hanko);color:var(--hanko);margin-left:6px;" onclick="deleteAllWords()">🗑 전체 삭제</button>
       <div class="dashed-top">
         <div class="grid2">
           <div class="field"><label>단어</label><input id="w-kanji" /></div>
@@ -1361,6 +1362,30 @@ function loadDefaultWords() {
     batch.commit().then(() => toast("기본 단어 18개를 불러왔어요."));
   });
 }
+async function deleteAllWords() {
+  const count = S.words.length;
+  if (!confirm(`정말 등록된 단어 ${count}개를 전부 삭제할까요? 되돌릴 수 없어요.`)) return;
+  const msg = document.getElementById("word-bulk-msg");
+  if (msg) msg.textContent = "삭제 중...";
+  const snap = await db.collection("sharedWords").get();
+  let batch = db.batch(); let n = 0;
+  for (const d of snap.docs) {
+    batch.delete(d.ref); n++;
+    if (n % 400 === 0) { await batch.commit(); batch = db.batch(); }
+  }
+  await batch.commit();
+  toast(`${n}개 단어를 삭제했어요.`);
+  if (msg) msg.textContent = "";
+}
+async function deleteSelectedWords() {
+  const boxes = document.querySelectorAll(".word-select-box:checked");
+  if (!boxes.length) { toast("삭제할 단어를 선택해주세요."); return; }
+  if (!confirm(`선택한 ${boxes.length}개 단어를 삭제할까요?`)) return;
+  let batch = db.batch(); let n = 0;
+  boxes.forEach(b => { batch.delete(db.collection("sharedWords").doc(b.dataset.id)); n++; });
+  await batch.commit();
+  toast(`${n}개 단어를 삭제했어요.`);
+}
 async function bulkAddWords() {
   const raw = document.getElementById("word-bulk").value;
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
@@ -1406,6 +1431,7 @@ function renderSharedWordList() {
       <span class="muted">등록된 단어 (${S.words.length}개)</span>
       <input id="shared-word-search" placeholder="검색" style="width:120px;padding:4px 6px;border:1px solid var(--washi-dark);border-radius:3px;font-size:12px;" oninput="renderSharedWordRows()" />
     </div>
+    <button class="btn-ghost" style="border-color:var(--hanko);color:var(--hanko);margin-bottom:8px;" onclick="deleteSelectedWords()">선택한 단어 삭제</button>
     <div id="shared-word-rows"></div>
   `;
   renderSharedWordRows();
@@ -1418,7 +1444,10 @@ function renderSharedWordRows() {
     .sort((a, b) => (a.difficulty || 50) - (b.difficulty || 50));
   rows.innerHTML = list.map(w => `
     <div class="rowbetween small" style="padding:5px 0;border-bottom:1px solid var(--washi-dark);">
-      <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span></span>
+      <span style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" class="word-select-box" data-id="${w.id}" />
+        <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span></span>
+      </span>
       <span style="display:flex;gap:6px;align-items:center;">
         <select onchange="updateWordJlpt('${w.id}', this.value)" style="font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;">
           ${JLPT_LABELS.map(l => `<option value="${l}" ${w.jlpt === l ? "selected" : ""}>${l}</option>`).join("")}
