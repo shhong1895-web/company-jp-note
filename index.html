@@ -168,7 +168,7 @@ const db = firebase.firestore();
 /* =========================================================
    1. 상수 / 기본 데이터 (JLPT 기반 난이도, 초급/중급/고급 대신 1~100 연속값)
 ========================================================= */
-const JLPT_LABELS = ["N5", "N4", "N3", "N2", "N1", "전문용어"];
+const JLPT_LABELS = ["N5", "N4", "N3", "N2", "N1", "전문용어", "문법"];
 const JLPT_DIFF = { N5: 10, N4: 30, N3: 50, N2: 70, N1: 90, "전문용어": 60 };
 
 const DEFAULT_WORDS = [
@@ -1463,9 +1463,11 @@ function renderSharedWordRows() {
   const list = [...S.words].filter(w => !q || w.kanji.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q) || w.reading.toLowerCase().includes(q))
     .sort((a, b) => (a.difficulty || 50) - (b.difficulty || 50));
   rows.innerHTML = list.map(w => `
-    <div class="rowbetween small" style="padding:8px 0;border-bottom:1px solid var(--washi-dark);">
-      <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;" onclick="openWordModal('${w.id}')">
-        <input type="checkbox" class="word-select-box" data-id="${w.id}" onclick="event.stopPropagation()" />
+    <div class="rowbetween small" style="padding:2px 0;border-bottom:1px solid var(--washi-dark);">
+      <label style="display:flex;align-items:center;justify-content:center;width:40px;height:44px;flex-shrink:0;cursor:pointer;">
+        <input type="checkbox" class="word-select-box" data-id="${w.id}" style="width:20px;height:20px;" />
+      </label>
+      <span style="display:flex;align-items:center;flex:1;min-width:0;padding:8px 0;" onclick="openWordModal('${w.id}')">
         <span style="min-width:0;"><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span><span class="jlpt-mini">${escapeHtml(w.jlpt || "")}</span></span>
       </span>
     </div>
