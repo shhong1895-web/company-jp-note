@@ -29,7 +29,16 @@
   .progress-badge{border:1.5px solid var(--ink);border-radius:4px;padding:10px 12px;margin-top:14px;}
   .progress-dot{flex:1;height:14px;border:1.5px solid var(--washi-dark);border-radius:3px;}
   .progress-dot.filled{border-color:var(--hanko);background:var(--hanko);}
-  nav.tabs{max-width:640px;margin:14px auto 0;padding:0 18px;display:flex;gap:2px;flex-wrap:wrap;}
+  nav.tabs{max-width:640px;margin:0 auto;padding:10px 18px 8px;display:flex;gap:2px;flex-wrap:wrap;
+    position:sticky;top:0;background:var(--washi);z-index:40;border-bottom:1.5px solid var(--ink);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(30,42,56,.55);z-index:200;display:flex;
+    align-items:flex-end;justify-content:center;}
+  .modal-box{background:#fff;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;
+    border-radius:14px 14px 0 0;padding:22px 20px 28px;}
+  .jlpt-mini{display:inline-block;border:1px solid var(--washi-dark);color:var(--ink-soft);font-size:10px;
+    padding:1px 5px;border-radius:8px;margin-left:4px;}
+  .team-group-header{background:var(--washi);font-weight:700;padding:8px 4px;margin-top:10px;
+    border-bottom:1.5px solid var(--ink);position:sticky;top:44px;}
   .tab-btn{background:none;border:none;color:var(--ink-soft);font-weight:700;font-size:13px;
     padding:8px 10px;border-bottom:3px solid transparent;display:flex;align-items:center;gap:5px;}
   .tab-btn.active{color:var(--ink);border-bottom-color:var(--hanko);}
@@ -134,6 +143,7 @@
 </div>
 
 <div id="toast-root"></div>
+<div id="modal-root"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -234,6 +244,11 @@ function toast(msg, ms = 2800) {
   root.appendChild(elx);
   setTimeout(() => elx.remove(), ms);
 }
+function openModal(innerHtml) {
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this) closeModal()">${innerHtml}</div>`;
+}
+function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
 function kanjiRowHtml(word, size = 64) {
   const px = size;
   const fontPx = Math.round(size * 0.52);
@@ -1314,18 +1329,23 @@ function renderRosterList() {
   const box = document.getElementById("roster-list");
   if (!box) return;
   const rows = S.roster.filter(r => !q || r.name.toLowerCase().includes(q) || r.empId.toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q));
-  box.innerHTML = rows.map(r => `
-    <div class="rowbetween small" style="padding:6px 0;border-bottom:1px solid var(--washi-dark);">
-      <span>${escapeHtml(r.name)} <span class="muted">(${escapeHtml(r.empId)})</span>
-        ${isDirector ? `<span class="muted">· ${escapeHtml(r.team || "미배정")}</span>` : ""}
-        ${r.role !== "member" ? `<span style="color:var(--hanko);font-weight:700;"> ${roleLabel(r.role)}</span>` : ""}
-        ${r.active === false ? '<span class="muted">(비활성)</span>' : ""}</span>
-      <span style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${isDirector ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="promptChangeTeam('${r.empId}','${escapeHtml(r.team || "")}')">팀 변경</button>
-        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "leader" ? "member" : "leader"}')">${r.role === "leader" ? "팀장 해제" : "팀장 지정"}</button>` : ""}
-        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterActive('${r.empId}', ${r.active === false})">${r.active === false ? "활성화" : "비활성화"}</button>
-      </span>
-    </div>
+  const groups = {};
+  rows.forEach(r => { const t = r.team || "미배정"; (groups[t] = groups[t] || []).push(r); });
+  const teamNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko"));
+  box.innerHTML = teamNames.map(team => `
+    <div class="team-group-header small">${escapeHtml(team)} (${groups[team].length}명)</div>
+    ${groups[team].map(r => `
+      <div class="rowbetween small" style="padding:6px 0;border-bottom:1px solid var(--washi-dark);">
+        <span>${escapeHtml(r.name)} <span class="muted">(${escapeHtml(r.empId)})</span>
+          ${r.role !== "member" ? `<span style="color:var(--hanko);font-weight:700;"> ${roleLabel(r.role)}</span>` : ""}
+          ${r.active === false ? '<span class="muted">(비활성)</span>' : ""}</span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${isDirector ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="promptChangeTeam('${r.empId}','${escapeHtml(r.team || "")}')">팀 변경</button>
+          <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "leader" ? "member" : "leader"}')">${r.role === "leader" ? "팀장 해제" : "팀장 지정"}</button>` : ""}
+          <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterActive('${r.empId}', ${r.active === false})">${r.active === false ? "활성화" : "비활성화"}</button>
+        </span>
+      </div>
+    `).join("")}
   `).join("");
 }
 function promptChangeTeam(empId, currentTeam) {
@@ -1443,24 +1463,54 @@ function renderSharedWordRows() {
   const list = [...S.words].filter(w => !q || w.kanji.toLowerCase().includes(q) || w.meaning.toLowerCase().includes(q) || w.reading.toLowerCase().includes(q))
     .sort((a, b) => (a.difficulty || 50) - (b.difficulty || 50));
   rows.innerHTML = list.map(w => `
-    <div class="rowbetween small" style="padding:5px 0;border-bottom:1px solid var(--washi-dark);">
-      <span style="display:flex;align-items:center;gap:6px;">
-        <input type="checkbox" class="word-select-box" data-id="${w.id}" />
-        <span><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span></span>
-      </span>
-      <span style="display:flex;gap:6px;align-items:center;">
-        <select onchange="updateWordJlpt('${w.id}', this.value)" style="font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;">
-          ${JLPT_LABELS.map(l => `<option value="${l}" ${w.jlpt === l ? "selected" : ""}>${l}</option>`).join("")}
-        </select>
-        <input type="number" value="${w.difficulty || 50}" min="1" max="100" style="width:48px;font-size:11px;padding:2px;border:1px solid var(--washi-dark);border-radius:3px;"
-          onchange="updateWordDifficulty('${w.id}', this.value)" />
-        <button class="btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="deleteSharedWord('${w.id}')">삭제</button>
+    <div class="rowbetween small" style="padding:8px 0;border-bottom:1px solid var(--washi-dark);">
+      <span style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;" onclick="openWordModal('${w.id}')">
+        <input type="checkbox" class="word-select-box" data-id="${w.id}" onclick="event.stopPropagation()" />
+        <span style="min-width:0;"><strong>${escapeHtml(w.kanji)}</strong> <span class="muted">${escapeHtml(w.reading)} · ${escapeHtml(w.meaning)}</span><span class="jlpt-mini">${escapeHtml(w.jlpt || "")}</span></span>
       </span>
     </div>
   `).join("");
 }
-function updateWordJlpt(id, jlpt) { db.collection("sharedWords").doc(id).set({ jlpt }, { merge: true }); }
-function updateWordDifficulty(id, difficulty) { db.collection("sharedWords").doc(id).set({ difficulty: Number(difficulty) || 50 }, { merge: true }); }
+function openWordModal(wordId) {
+  const w = S.words.find(x => x.id === wordId);
+  if (!w) return;
+  openModal(`
+    <div class="modal-box">
+      <div class="rowbetween" style="margin-bottom:10px;">
+        <h3 style="margin:0;font-family:'Shippori Mincho',serif;font-size:22px;">${escapeHtml(w.kanji)}</h3>
+        <button onclick="closeModal()" style="border:none;background:none;font-size:24px;color:var(--ink);line-height:1;">×</button>
+      </div>
+      <div class="field"><label>단어(한자/가나)</label><input id="edit-kanji" value="${escapeHtml(w.kanji)}" /></div>
+      <div class="field"><label>읽는 법</label><input id="edit-reading" value="${escapeHtml(w.reading)}" /></div>
+      <div class="field"><label>뜻</label><input id="edit-meaning" value="${escapeHtml(w.meaning)}" /></div>
+      <div class="field"><label>예문 (일본어)</label><input id="edit-example" value="${escapeHtml(w.example || "")}" /></div>
+      <div class="field"><label>예문 해석</label><input id="edit-examplekr" value="${escapeHtml(w.exampleKo || "")}" /></div>
+      <div class="grid2">
+        <div class="field"><label>JLPT 등급</label>
+          <select id="edit-jlpt">${JLPT_LABELS.map(l => `<option value="${l}" ${w.jlpt === l ? "selected" : ""}>${l}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>난이도 (1~100)</label><input id="edit-difficulty" type="number" min="1" max="100" value="${w.difficulty || 50}" /></div>
+      </div>
+      <div class="rowbetween" style="margin-top:18px;gap:8px;">
+        <button class="btn-hanko" style="flex:1;" onclick="saveWordEdit('${w.id}')">저장</button>
+        <button class="btn-ghost" style="flex:1;border-color:var(--hanko);color:var(--hanko);" onclick="deleteSharedWord('${w.id}');closeModal();">삭제</button>
+      </div>
+    </div>
+  `);
+}
+function saveWordEdit(id) {
+  const patch = {
+    kanji: document.getElementById("edit-kanji").value.trim(),
+    reading: document.getElementById("edit-reading").value.trim(),
+    meaning: document.getElementById("edit-meaning").value.trim(),
+    example: document.getElementById("edit-example").value.trim(),
+    exampleKo: document.getElementById("edit-examplekr").value.trim(),
+    jlpt: document.getElementById("edit-jlpt").value,
+    difficulty: Number(document.getElementById("edit-difficulty").value) || 50
+  };
+  if (!patch.kanji || !patch.reading || !patch.meaning) { toast("단어, 읽는 법, 뜻은 비울 수 없어요."); return; }
+  db.collection("sharedWords").doc(id).set(patch, { merge: true }).then(() => { toast("저장했어요."); closeModal(); });
+}
 function deleteSharedWord(id) { db.collection("sharedWords").doc(id).delete(); }
 </script>
 </body>
