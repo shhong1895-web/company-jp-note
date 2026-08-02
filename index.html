@@ -607,11 +607,12 @@ function dailyAllStepsDone() {
 }
 function completeDailySession() {
   const daily = S.progress.daily;
+  if (daily && daily.completed) return; // 이미 완료 처리된 날은 재도전해도 마스터 카운트를 다시 올리지 않음
   const addCount = daily ? daily.wordIds.length : (S.progress.dailyWordCount || 3);
   const newMastered = (S.progress.masteredCount || 0) + addCount;
   db.collection("progress").doc(S.uid).set({
     masteredCount: newMastered,
-    daily: { date: todayStr(), wordIds: [], perWord: {}, completed: true }
+    daily: { ...daily, completed: true }
   }, { merge: true }).then(() => toast("오늘 학습을 완료했어요! 내일 새로운 단어를 만나요 🎉"));
 }
 function renderDailyTab(c) {
@@ -751,12 +752,22 @@ function renderStudyTab(c) {
       <button class="btn-ghost" style="flex:1;${mode === "card" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setStudyMode('card')">📖 카드학습</button>
       <button class="btn-ghost" style="flex:1;${mode === "hand" ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setStudyMode('hand')">✍️ 손글씨 연습</button>
     </div>
+    ${mode === "card" ? `
+      <div class="rowbetween small" style="margin-bottom:8px;">
+        <span class="muted">뜻·읽기 표시 방식</span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-ghost" style="padding:4px 10px;font-size:11px;${!S.autoReveal ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setAutoReveal(false)">필요할 때만</button>
+          <button class="btn-ghost" style="padding:4px 10px;font-size:11px;${S.autoReveal ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setAutoReveal(true)">항상 자동</button>
+        </div>
+      </div>
+    ` : ""}
     ${mode === "card" ? studyCardHtml(w, words.length) : studyHandHtml(w, words.length)}
   `;
   window.__currentStudyWord = w;
   if (mode === "hand") setupCanvas();
 }
 function setStudyMode(mode) { S.studyMode = mode; renderStudyTab(document.getElementById("tab-content")); }
+function setAutoReveal(val) { S.autoReveal = val; renderStudyTab(document.getElementById("tab-content")); }
 function studyCardHtml(w, total) {
   return `
     <div class="rowbetween small muted" style="margin-bottom:10px;"><span>${S.studyIdx + 1} / ${total}</span></div>
@@ -768,7 +779,7 @@ function studyCardHtml(w, total) {
       </div>
       <div id="pron-result"></div>
       <div class="center" style="margin-top:20px;" id="reveal-zone">
-        <button class="btn-main" onclick="revealWord()">뜻 · 읽기 보기</button>
+        ${S.autoReveal ? revealContentHtml(w) : `<button class="btn-main" onclick="revealWord()">뜻 · 읽기 보기</button>`}
       </div>
     </div>
     <div class="rowbetween" style="margin-top:16px;">
@@ -806,9 +817,8 @@ function studyNav(d) {
   S.studyIdx = (S.studyIdx + d + words.length) % words.length;
   renderStudyTab(document.getElementById("tab-content"));
 }
-function revealWord() {
-  const w = window.__currentStudyWord;
-  document.getElementById("reveal-zone").innerHTML = `
+function revealContentHtml(w) {
+  return `
     <p style="color:var(--hanko);font-family:'Noto Serif JP',serif;font-size:18px;font-weight:700;margin:0;">${escapeHtml(w.reading)}</p>
     <p style="font-size:20px;font-weight:700;margin:4px 0 0;">${escapeHtml(w.meaning)}</p>
     <div class="dashed-top" style="text-align:left;">
@@ -824,6 +834,10 @@ function revealWord() {
       ` : ""}
     </div>
   `;
+}
+function revealWord() {
+  const w = window.__currentStudyWord;
+  document.getElementById("reveal-zone").innerHTML = revealContentHtml(w);
 }
 
 /* 발음 연습: SpeechRecognition 지원되면 자동 채점, 아니면 녹음+재생 (iOS 등) */
@@ -943,9 +957,14 @@ function questionStem(qType, tier) {
   if (tier >= 3) return qType === "meaning" ? "この言葉の意味はどれですか？" : "この言葉の読み方はどれですか？";
   return qType === "meaning" ? "이 단어의 뜻은?" : "이 단어의 읽는 법은?";
 }
-/* 티어가 올라갈수록 오답 보기를 더 헷갈리게(비슷한 난이도/읽기) 고름 */
-function pickDistractors(pool, target, tier, n = 3) {
-  const others = pool.filter(x => x.id !== target.id);
+/* 티어가 올라갈수록 오답 보기를 더 헷갈리게(비슷한 난이도/읽기) 고름.
+   단, qType 기준 값(읽기 또는 뜻)이 정답과 완전히 같은 단어(동음이의어 등)는 제외해서
+   보기 중복(예: 帰る/変える 둘 다 "かえる")이 생기지 않도록 함. */
+function pickDistractors(pool, target, tier, qType, n = 3) {
+  const targetVal = qType === "meaning" ? target.meaning : target.reading;
+  const valueOf = (x) => (qType === "meaning" ? x.meaning : x.reading);
+  const uniqueByValue = (arr) => Array.from(new Map(arr.map(w => [valueOf(w), w])).values());
+  const others = uniqueByValue(pool.filter(x => x.id !== target.id && valueOf(x) !== targetVal));
   if (tier === 1) return shuffle(others).slice(0, n);
   const firstKana = (target.reading || "")[0];
   let candidates = others;
@@ -971,7 +990,7 @@ function buildQuiz(pool, count, mustIncludeWords) {
     const isTyping = Math.random() < typingRate;
     const qType = Math.random() > 0.5 ? "meaning" : "reading";
     if (isTyping) return { word: w, mode: "typing", qType, tier };
-    const distractors = pickDistractors(base, w, tier, 3);
+    const distractors = pickDistractors(base, w, tier, qType, 3);
     return { word: w, mode: "choice", qType, tier, options: shuffle([w, ...distractors]) };
   });
 }
@@ -1084,7 +1103,12 @@ function renderQuizResult(c) {
   const pct = Math.round((S.quiz.score / total) * 100);
   if (S.quiz.isDaily) {
     if (pct / 100 >= 0.7) {
-      c.innerHTML = `<div class="card-soft"><p style="font-size:22px;font-weight:700;margin:0;">🎉 오늘 학습 완료!</p><p class="muted" style="margin:6px 0 0;">퀴즈 정답률 ${pct}%</p></div>`;
+      c.innerHTML = `
+        <div class="card-soft">
+          <p style="font-size:22px;font-weight:700;margin:0;">🎉 오늘 학습 완료!</p>
+          <p class="muted" style="margin:6px 0 18px;">퀴즈 정답률 ${pct}%</p>
+          ${pct < 100 ? `<button class="btn-ghost" onclick="startDailyQuiz()">만점 도전하며 한 번 더 풀기</button>` : ""}
+        </div>`;
     } else {
       c.innerHTML = `
         <div class="card-soft">
