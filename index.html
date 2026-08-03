@@ -37,8 +37,10 @@
     border-radius:14px 14px 0 0;padding:22px 20px 28px;}
   .jlpt-mini{display:inline-block;border:1px solid var(--washi-dark);color:var(--ink-soft);font-size:10px;
     padding:1px 5px;border-radius:8px;margin-left:4px;}
-  .team-group-header{background:var(--washi);font-weight:700;padding:8px 4px;margin-top:10px;
-    border-bottom:1.5px solid var(--ink);position:sticky;top:44px;}
+  .team-group-header{background:var(--washi);font-weight:700;padding:6px 4px;margin-top:8px;
+    border-bottom:1px solid var(--washi-dark);}
+  .sticky-group-bar{position:sticky;top:0;background:var(--washi);font-weight:700;padding:7px 6px;
+    border-bottom:1.5px solid var(--ink);z-index:5;font-size:12px;}
   .tab-btn{background:none;border:none;color:var(--ink-soft);font-weight:700;font-size:13px;
     padding:8px 10px;border-bottom:3px solid transparent;display:flex;align-items:center;gap:5px;}
   .tab-btn.active{color:var(--ink);border-bottom-color:var(--hanko);}
@@ -243,6 +245,26 @@ function toast(msg, ms = 2800) {
   elx.textContent = msg;
   root.appendChild(elx);
   setTimeout(() => elx.remove(), ms);
+}
+/* 스크롤 컨테이너 안에서 그룹(.group-section) 헤더 대신, 검색창 바로 아래 한 자리에서
+   현재 스크롤 위치의 그룹명으로 계속 교체 표시되는 고정 라벨 */
+function attachStickyGroupScroll(scrollElId, labelElId) {
+  const scrollEl = document.getElementById(scrollElId);
+  const labelEl = document.getElementById(labelElId);
+  if (!scrollEl || !labelEl) return;
+  const sections = Array.from(scrollEl.querySelectorAll(".group-section"));
+  if (!sections.length) { labelEl.textContent = ""; labelEl.style.display = "none"; return; }
+  labelEl.style.display = "";
+  const update = () => {
+    const boxTop = scrollEl.getBoundingClientRect().top;
+    let current = sections[0];
+    for (const sec of sections) {
+      if (sec.getBoundingClientRect().top - boxTop <= 28) current = sec;
+    }
+    labelEl.textContent = current.dataset.label || "";
+  };
+  scrollEl.onscroll = update;
+  update();
 }
 function openModal(innerHtml) {
   const root = document.getElementById("modal-root");
@@ -1226,16 +1248,29 @@ function renderTeamRows() {
   if (!groupsBox) return;
 
   if (isDirector) {
-    // 실장(division)까지 묶어서: 실 > 팀
-    const byDivision = {};
-    rows.forEach(r => { const d = r.division || "미배정 실"; (byDivision[d] = byDivision[d] || []).push(r); });
-    const divisionNames = Object.keys(byDivision).sort((a, b) => a.localeCompare(b, "ko"));
-    groupsBox.innerHTML = divisionNames.map(div => {
+    // 실(division)이 있으면 실 > 팀으로 묶고, 실이 없는 팀(예: 디자인팀)은 팀 이름 자체를 그룹명으로 사용
+    const byGroup = {};
+    rows.forEach(r => { const label = r.division || r.team || "미배정"; (byGroup[label] = byGroup[label] || []).push(r); });
+    const groupNames = Object.keys(byGroup).sort((a, b) => a.localeCompare(b, "ko"));
+    groupsBox.innerHTML = groupNames.map(label => {
+      const members = byGroup[label];
+      const hasDivision = members.some(r => r.division);
+      if (!hasDivision) {
+        return `
+          <div class="team-group-header small">${escapeHtml(label)} (${members.length}명)</div>
+          <div class="card" style="margin-bottom:14px;">
+            <table class="team">
+              <thead><tr><th>이름</th><th>습득 단어</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
+              <tbody>${teamRowsHtml(members)}</tbody>
+            </table>
+          </div>
+        `;
+      }
       const byTeam = {};
-      byDivision[div].forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+      members.forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
       const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
       return `
-        <div class="team-group-header small">${escapeHtml(div)} (${byDivision[div].length}명)</div>
+        <div class="team-group-header small">${escapeHtml(label)} (${members.length}명)</div>
         ${teamNames.map(t => `
           <div class="card" style="margin-bottom:14px;">
             <p style="font-weight:700;margin:0 0 8px;">${escapeHtml(t)} (${byTeam[t].length}명)</p>
@@ -1332,7 +1367,10 @@ function renderAdminTab(c) {
     <div class="card" style="margin-bottom:18px;">
       <p style="font-weight:700;margin:0 0 10px;">${listTitle} (${S.roster.length}명)</p>
       <input id="roster-search" placeholder="검색" style="width:100%;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderRosterList()" />
-      <div id="roster-list" style="margin-top:10px;max-height:320px;overflow:auto;"></div>
+      <div id="roster-list" style="margin-top:10px;max-height:360px;overflow:auto;position:relative;">
+        <div id="roster-sticky-label" class="sticky-group-bar"></div>
+        <div id="roster-rows"></div>
+      </div>
     </div>
     ${isDirector ? `
     <div class="card" style="margin-bottom:18px;">
@@ -1412,8 +1450,8 @@ function renderRosterList() {
   const isDivisionHead = role === "divisionHead";
   const canEdit = isDirector || isDivisionHead;
   const q = (document.getElementById("roster-search")?.value || "").trim().toLowerCase();
-  const box = document.getElementById("roster-list");
-  if (!box) return;
+  const rowsBox = document.getElementById("roster-rows");
+  if (!rowsBox) return;
   const rows = S.roster.filter(r => !q || r.name.toLowerCase().includes(q) || r.empId.toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q) || (r.division || "").toLowerCase().includes(q));
 
   const rowHtml = (r) => `
@@ -1431,28 +1469,38 @@ function renderRosterList() {
   `;
 
   if (isDirector) {
-    const byDivision = {};
-    rows.forEach(r => { const d = r.division || "미배정 실"; (byDivision[d] = byDivision[d] || []).push(r); });
-    const divisionNames = Object.keys(byDivision).sort((a, b) => a.localeCompare(b, "ko"));
-    box.innerHTML = divisionNames.map(div => {
-      const byTeam = {};
-      byDivision[div].forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
-      const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
-      return `
-        <div class="team-group-header small">${escapeHtml(div)} (${byDivision[div].length}명)</div>
-        ${teamNames.map(t => `<p class="muted small" style="margin:6px 0 2px;font-weight:700;">${escapeHtml(t)}</p>${byTeam[t].map(rowHtml).join("")}`).join("")}
-      `;
+    // 소속실이 있으면 "실 > 팀"으로, 소속실이 없는 팀(예: 디자인팀)은 팀 이름 자체를 그룹명으로 사용
+    const byGroup = {};
+    rows.forEach(r => {
+      const label = r.division || r.team || "미배정";
+      (byGroup[label] = byGroup[label] || []).push(r);
+    });
+    const groupNames = Object.keys(byGroup).sort((a, b) => a.localeCompare(b, "ko"));
+    rowsBox.innerHTML = groupNames.map(label => {
+      const members = byGroup[label];
+      const hasDivision = members.some(r => r.division);
+      let inner;
+      if (hasDivision) {
+        const byTeam = {};
+        members.forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+        const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
+        inner = teamNames.map(t => `<p class="muted small" style="margin:6px 0 2px;font-weight:700;">${escapeHtml(t)}</p>${byTeam[t].map(rowHtml).join("")}`).join("");
+      } else {
+        inner = members.map(rowHtml).join("");
+      }
+      return `<div class="group-section" data-label="${escapeHtml(label)} (${members.length}명)">${inner}</div>`;
     }).join("");
+    attachStickyGroupScroll("roster-list", "roster-sticky-label");
     return;
   }
 
   const groups = {};
   rows.forEach(r => { const t = r.team || "미배정"; (groups[t] = groups[t] || []).push(r); });
   const teamNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko"));
-  box.innerHTML = teamNames.map(team => `
-    <div class="team-group-header small">${escapeHtml(team)} (${groups[team].length}명)</div>
-    ${groups[team].map(rowHtml).join("")}
+  rowsBox.innerHTML = teamNames.map(team => `
+    <div class="group-section" data-label="${escapeHtml(team)} (${groups[team].length}명)">${groups[team].map(rowHtml).join("")}</div>
   `).join("");
+  attachStickyGroupScroll("roster-list", "roster-sticky-label");
 }
 function promptChangeTeam(empId, currentDivision, currentTeam) {
   const division = prompt("새 소속실을 입력하세요. (없으면 비워두세요)", currentDivision || "");
