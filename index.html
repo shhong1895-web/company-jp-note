@@ -108,14 +108,38 @@
   <div class="login-card">
     <p class="brand-jp">会社の日本語ノート</p>
     <h1 class="brand-ko" style="margin-bottom:18px;">로그인</h1>
-    <div class="field">
-      <label>사번</label>
-      <input id="login-empid" placeholder="예: 20231234" />
-      <label>이름</label>
-      <input id="login-name" placeholder="예: 홍길동" />
+
+    <div id="login-step1">
+      <div class="field">
+        <label>사번</label>
+        <input id="login-empid" placeholder="예: 20231234" />
+      </div>
+      <p id="login-error1" class="err-msg hidden"></p>
+      <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handleEmpIdCheck()">다음</button>
     </div>
-    <p id="login-error" class="err-msg hidden"></p>
-    <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handleLogin()">시작하기</button>
+
+    <div id="login-step-new" class="hidden">
+      <p class="muted small" style="margin-bottom:10px;">처음 로그인하시네요. 이름을 확인해주세요.</p>
+      <div class="field">
+        <label>이름</label>
+        <input id="login-name" placeholder="예: 홍길동" />
+      </div>
+      <p class="muted small" style="margin-top:10px;">초기 비밀번호는 사번과 동일해요. 로그인 후 설정에서 바꿀 수 있어요.</p>
+      <p id="login-error-new" class="err-msg hidden"></p>
+      <button class="btn-hanko" style="width:100%;margin-top:14px;" onclick="handleFirstLogin()">시작하기</button>
+      <button class="btn-ghost" style="width:100%;margin-top:8px;" onclick="backToStep1()">이전</button>
+    </div>
+
+    <div id="login-step-existing" class="hidden">
+      <div class="field">
+        <label>비밀번호</label>
+        <input id="login-password" type="password" placeholder="비밀번호" />
+      </div>
+      <p id="login-error-existing" class="err-msg hidden"></p>
+      <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handlePasswordLogin()">로그인</button>
+      <button class="btn-ghost" style="width:100%;margin-top:8px;" onclick="backToStep1()">이전</button>
+    </div>
+
     <p class="muted small" style="margin-top:14px;">등록된 사번이 없다면 팀장(관리자)에게 문의해주세요.</p>
   </div>
 </div>
@@ -404,24 +428,33 @@ const S = {
 };
 
 /* =========================================================
-   5. 부트 / 로그인
+   5. 부트 / 로그인 (사번 + 비밀번호, Firebase 이메일/비밀번호 인증 기반)
+   - 같은 사번+비밀번호면 어느 기기에서 로그인해도 항상 같은 uid로 연결되어
+     PC/휴대폰을 바꿔도 학습 기록이 하나로 유지됨.
+   - 사번은 실제 이메일이 아니라 내부용 가짜 이메일 주소로만 사용됨(로그인 식별자 역할).
 ========================================================= */
+function empIdToEmail(empId) { return `${empId}@shhong-jp-note.internal`; }
+
 auth.onAuthStateChanged(async (user) => {
-  if (!user) { try { await auth.signInAnonymously(); } catch (e) { console.error(e); } return; }
+  if (!user) {
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("login-screen").classList.remove("hidden");
+    return;
+  }
   S.uid = user.uid;
   const doc = await db.collection("users").doc(S.uid).get().catch(() => null);
   if (doc && doc.exists) {
     S.user = doc.data();
     await syncRoleFromRoster();
     enterApp();
-  }
-  else {
+  } else {
+    // 인증은 됐는데 프로필 문서가 없는 예외 상황 -> 로그아웃 후 재로그인 유도
+    await auth.signOut();
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("login-screen").classList.remove("hidden");
   }
 });
-/* roster가 최신 기준(source of truth). 팀장 지정/팀 변경이 있었는데 내 users/progress 문서가
-   과거 값을 그대로 갖고 있을 수 있으므로, 로그인할 때마다 roster와 대조해서 항상 맞춰준다. */
+
 async function syncRoleFromRoster() {
   try {
     if (!S.user || !S.user.empId) return;
@@ -442,38 +475,86 @@ async function syncRoleFromRoster() {
   } catch (e) { console.error("syncRoleFromRoster", e); }
 }
 
-async function handleLogin() {
+function showLoginStep(step) {
+  ["login-step1", "login-step-new", "login-step-existing"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  document.getElementById(step).classList.remove("hidden");
+}
+function backToStep1() { showLoginStep("login-step1"); }
+
+let __pendingEmpId = null, __pendingRosterName = null;
+async function handleEmpIdCheck() {
   const empId = document.getElementById("login-empid").value.trim();
-  const name = document.getElementById("login-name").value.trim();
-  const errEl = document.getElementById("login-error");
+  const errEl = document.getElementById("login-error1");
   errEl.classList.add("hidden");
-  if (!empId || !name) { errEl.textContent = "사번과 이름을 모두 입력해주세요."; errEl.classList.remove("hidden"); return; }
+  if (!empId) { errEl.textContent = "사번을 입력해주세요."; errEl.classList.remove("hidden"); return; }
   try {
     const rosterDoc = await db.collection("roster").doc(empId).get();
     if (!rosterDoc.exists || rosterDoc.data().active === false) {
       errEl.textContent = "등록되지 않은 사번이거나 비활성화된 계정이에요. 관리자에게 문의해주세요.";
       errEl.classList.remove("hidden"); return;
     }
-    const rdata = rosterDoc.data();
-    if (rdata.name.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
-      errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
-      errEl.classList.remove("hidden"); return;
+    __pendingEmpId = empId;
+    __pendingRosterName = rosterDoc.data().name;
+    const methods = await auth.fetchSignInMethodsForEmail(empIdToEmail(empId));
+    if (methods.length === 0) {
+      showLoginStep("login-step-new");
+    } else {
+      showLoginStep("login-step-existing");
     }
-    await db.collection("users").doc(S.uid).set({
-      empId, name: rdata.name, role: rdata.role || "member", team: rdata.team || "미배정", division: rdata.division || "",
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastActive: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    await db.collection("progress").doc(S.uid).set({
-      empId, name: rdata.name, team: rdata.team || "미배정", division: rdata.division || "", role: rdata.role || "member",
-      streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, masteredCount: 0, dailyWordCount: 3
-    }, { merge: true });
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "확인 중 오류가 발생했어요. 다시 시도해주세요.";
+    errEl.classList.remove("hidden");
+  }
+}
+
+async function createProfileDocs(empId, rdata) {
+  await db.collection("users").doc(S.uid).set({
+    empId, name: rdata.name, role: rdata.role || "member", team: rdata.team || "미배정", division: rdata.division || "",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lastActive: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  await db.collection("progress").doc(S.uid).set({
+    empId, name: rdata.name, team: rdata.team || "미배정", division: rdata.division || "", role: rdata.role || "member",
+    streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, masteredCount: 0, dailyWordCount: 3
+  }, { merge: true });
+}
+
+async function handleFirstLogin() {
+  const name = document.getElementById("login-name").value.trim();
+  const errEl = document.getElementById("login-error-new");
+  errEl.classList.add("hidden");
+  if (!name) { errEl.textContent = "이름을 입력해주세요."; errEl.classList.remove("hidden"); return; }
+  if (__pendingRosterName.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
+    errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
+    errEl.classList.remove("hidden"); return;
+  }
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(empIdToEmail(__pendingEmpId), __pendingEmpId);
+    S.uid = cred.user.uid;
+    const rosterDoc = await db.collection("roster").doc(__pendingEmpId).get();
+    await createProfileDocs(__pendingEmpId, rosterDoc.data());
     const doc = await db.collection("users").doc(S.uid).get();
     S.user = doc.data();
+    toast("초기 비밀번호는 사번과 동일해요. 설정에서 바꿔주세요.");
     enterApp();
   } catch (e) {
     console.error(e);
-    errEl.textContent = "로그인 중 오류가 발생했어요. 다시 시도해주세요.";
+    errEl.textContent = "가입 중 오류가 발생했어요: " + (e.message || "");
+    errEl.classList.remove("hidden");
+  }
+}
+
+async function handlePasswordLogin() {
+  const password = document.getElementById("login-password").value;
+  const errEl = document.getElementById("login-error-existing");
+  errEl.classList.add("hidden");
+  if (!password) { errEl.textContent = "비밀번호를 입력해주세요."; errEl.classList.remove("hidden"); return; }
+  try {
+    await auth.signInWithEmailAndPassword(empIdToEmail(__pendingEmpId), password);
+    // onAuthStateChanged가 나머지(S.uid 설정, 프로필 로드, enterApp)를 처리함
+  } catch (e) {
+    errEl.textContent = "비밀번호가 틀렸어요. 다시 확인해주세요.";
     errEl.classList.remove("hidden");
   }
 }
@@ -589,6 +670,7 @@ function renderTabNav() {
     { id: "record", label: "기록" }
   ];
   if (["leader", "divisionHead", "director"].includes(S.user.role)) { tabs.push({ id: "team", label: "팀현황" }); tabs.push({ id: "admin", label: "관리" }); }
+  tabs.push({ id: "settings", label: "설정" });
   const nav = document.getElementById("tab-nav");
   nav.innerHTML = tabs.map(t => `<button class="tab-btn ${S.tab === t.id ? "active" : ""}" onclick="goTab('${t.id}')">${t.label}</button>`).join("");
 }
@@ -601,6 +683,103 @@ function renderTab() {
   if (S.tab === "record") return renderRecordTab(c);
   if (S.tab === "team") return renderTeamTab(c);
   if (S.tab === "admin") return renderAdminTab(c);
+  if (S.tab === "settings") return renderSettingsTab(c);
+}
+
+/* =========================================================
+   7-1. 설정 탭 (비밀번호 변경, 학습 설정, 소속 변경)
+========================================================= */
+function renderSettingsTab(c) {
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:700;margin:0 0 4px;">${escapeHtml(S.user.name)}</p>
+      <p class="muted small">${escapeHtml(S.user.empId)} · ${[S.user.division, S.user.team].filter(Boolean).join(" · ") || "미배정"} · ${roleLabel(S.user.role)}</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:700;margin:0 0 8px;">학습 설정</p>
+      <div class="rowbetween" style="margin-bottom:10px;">
+        <span class="small muted">하루 학습 단어 수</span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-ghost" style="padding:4px 10px;font-size:12px;${(S.progress.dailyWordCount || 3) === 3 ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setDailyWordCount(3)">3개</button>
+          <button class="btn-ghost" style="padding:4px 10px;font-size:12px;${(S.progress.dailyWordCount || 3) === 5 ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setDailyWordCount(5)">5개</button>
+        </div>
+      </div>
+      <div class="rowbetween">
+        <span class="small muted">자유학습 뜻·읽기 표시</span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-ghost" style="padding:4px 10px;font-size:12px;${!S.autoReveal ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setAutoReveal(false)">필요할 때만</button>
+          <button class="btn-ghost" style="padding:4px 10px;font-size:12px;${S.autoReveal ? "background:var(--ink);color:var(--washi);" : ""}" onclick="setAutoReveal(true)">항상 자동</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:700;margin:0 0 8px;">비밀번호 변경</p>
+      <div class="field"><label>현재 비밀번호</label><input id="pw-current" type="password" /></div>
+      <div class="field"><label>새 비밀번호 (6자 이상)</label><input id="pw-new" type="password" /></div>
+      <div class="field"><label>새 비밀번호 확인</label><input id="pw-new2" type="password" /></div>
+      <p id="pw-msg" class="muted small" style="margin-top:6px;"></p>
+      <button class="btn-hanko" style="width:100%;margin-top:10px;" onclick="changePassword()">비밀번호 변경</button>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:700;margin:0 0 8px;">소속 변경</p>
+      <p class="muted small" style="margin-bottom:8px;">전배 등으로 소속이 바뀌었다면 직접 수정할 수 있어요.</p>
+      <div class="field"><label>소속실</label><input id="my-division" value="${escapeHtml(S.user.division || "")}" /></div>
+      <div class="field"><label>소속팀</label><input id="my-team" value="${escapeHtml(S.user.team === "미배정" ? "" : (S.user.team || ""))}" /></div>
+      <p id="org-msg" class="muted small" style="margin-top:6px;"></p>
+      <button class="btn-hanko" style="width:100%;margin-top:10px;" onclick="updateMyOrg()">저장</button>
+    </div>
+
+    <button class="btn-ghost" style="width:100%;border-color:var(--hanko);color:var(--hanko);" onclick="handleLogout()">로그아웃</button>
+  `;
+}
+async function changePassword() {
+  const cur = document.getElementById("pw-current").value;
+  const next = document.getElementById("pw-new").value;
+  const next2 = document.getElementById("pw-new2").value;
+  const msg = document.getElementById("pw-msg");
+  if (!cur || !next) { msg.textContent = "현재 비밀번호와 새 비밀번호를 모두 입력해주세요."; return; }
+  if (next.length < 6) { msg.textContent = "새 비밀번호는 6자 이상이어야 해요."; return; }
+  if (next !== next2) { msg.textContent = "새 비밀번호 확인이 일치하지 않아요."; return; }
+  try {
+    const cred = firebase.auth.EmailAuthProvider.credential(empIdToEmail(S.user.empId), cur);
+    await auth.currentUser.reauthenticateWithCredential(cred);
+    await auth.currentUser.updatePassword(next);
+    msg.textContent = "비밀번호를 변경했어요.";
+    document.getElementById("pw-current").value = "";
+    document.getElementById("pw-new").value = "";
+    document.getElementById("pw-new2").value = "";
+    toast("비밀번호가 변경됐어요.");
+  } catch (e) {
+    msg.textContent = "현재 비밀번호가 올바르지 않아요.";
+  }
+}
+async function updateMyOrg() {
+  const division = document.getElementById("my-division").value.trim();
+  const team = document.getElementById("my-team").value.trim();
+  const msg = document.getElementById("org-msg");
+  try {
+    const patch = { division, team: team || "미배정" };
+    await db.collection("roster").doc(S.user.empId).set(patch, { merge: true });
+    await Promise.all([
+      db.collection("users").doc(S.uid).set(patch, { merge: true }),
+      db.collection("progress").doc(S.uid).set(patch, { merge: true })
+    ]);
+    S.user = { ...S.user, ...patch };
+    msg.textContent = "소속을 변경했어요.";
+    toast("소속 정보가 변경됐어요.");
+    document.getElementById("user-sub").textContent = `${[S.user.division, S.user.team].filter(Boolean).join(" · ") || "미배정"} · ${roleLabel(S.user.role)}`;
+  } catch (e) {
+    console.error(e);
+    msg.textContent = "변경 중 오류가 발생했어요.";
+  }
+}
+async function handleLogout() {
+  if (!confirm("로그아웃하시겠어요?")) return;
+  await auth.signOut();
+  location.reload();
 }
 
 /* =========================================================
@@ -1235,7 +1414,10 @@ function renderTeamTab(c) {
       <p style="font-weight:700;margin:0;">오늘 학습 완료: ${studiedCount} / ${rows.length}명${showDivision ? ` (${groupCount}개 팀)` : ""}</p>
       <input id="team-search" placeholder="이름, 사번${showDivision ? ", 팀" : ""} 검색" style="width:100%;margin-top:10px;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderTeamRows()" />
     </div>
-    <div id="team-groups"></div>
+    <div id="team-groups" style="max-height:520px;overflow:auto;position:relative;">
+      <div id="team-sticky-label" class="sticky-group-bar"></div>
+      <div id="team-rows"></div>
+    </div>
   `;
   renderTeamRows();
 }
@@ -1244,34 +1426,31 @@ function renderTeamRows() {
   const isDirector = S.user.role === "director";
   const isDivisionHead = S.user.role === "divisionHead";
   const rows = [...S.team].filter(r => !q || (r.name || "").toLowerCase().includes(q) || (r.empId || "").toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q) || (r.division || "").toLowerCase().includes(q));
-  const groupsBox = document.getElementById("team-groups");
-  if (!groupsBox) return;
+  const rowsBox = document.getElementById("team-rows");
+  if (!rowsBox) return;
 
   if (isDirector) {
     // 실(division)이 있으면 실 > 팀으로 묶고, 실이 없는 팀(예: 디자인팀)은 팀 이름 자체를 그룹명으로 사용
     const byGroup = {};
     rows.forEach(r => { const label = r.division || r.team || "미배정"; (byGroup[label] = byGroup[label] || []).push(r); });
     const groupNames = Object.keys(byGroup).sort((a, b) => a.localeCompare(b, "ko"));
-    groupsBox.innerHTML = groupNames.map(label => {
+    rowsBox.innerHTML = groupNames.map(label => {
       const members = byGroup[label];
       const hasDivision = members.some(r => r.division);
+      let inner;
       if (!hasDivision) {
-        return `
-          <div class="team-group-header small">${escapeHtml(label)} (${members.length}명)</div>
+        inner = `
           <div class="card" style="margin-bottom:14px;">
             <table class="team">
               <thead><tr><th>이름</th><th>습득 단어</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
               <tbody>${teamRowsHtml(members)}</tbody>
             </table>
-          </div>
-        `;
-      }
-      const byTeam = {};
-      members.forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
-      const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
-      return `
-        <div class="team-group-header small">${escapeHtml(label)} (${members.length}명)</div>
-        ${teamNames.map(t => `
+          </div>`;
+      } else {
+        const byTeam = {};
+        members.forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+        const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
+        inner = teamNames.map(t => `
           <div class="card" style="margin-bottom:14px;">
             <p style="font-weight:700;margin:0 0 8px;">${escapeHtml(t)} (${byTeam[t].length}명)</p>
             <table class="team">
@@ -1279,24 +1458,28 @@ function renderTeamRows() {
               <tbody>${teamRowsHtml(byTeam[t])}</tbody>
             </table>
           </div>
-        `).join("")}
-      `;
+        `).join("");
+      }
+      return `<div class="group-section" data-label="${escapeHtml(label)} (${members.length}명)">${inner}</div>`;
     }).join("");
+    attachStickyGroupScroll("team-groups", "team-sticky-label");
     return;
   }
 
   const groups = {};
   rows.forEach(r => { const t = r.team || "미배정"; (groups[t] = groups[t] || []).push(r); });
   const teamNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko"));
-  groupsBox.innerHTML = teamNames.map(teamName => `
-    <div class="card" style="margin-bottom:14px;">
-      ${isDivisionHead ? `<p style="font-weight:700;margin:0 0 8px;">${escapeHtml(teamName)} (${groups[teamName].length}명)</p>` : ""}
-      <table class="team">
-        <thead><tr><th>이름</th><th>습득 단어</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
-        <tbody>${teamRowsHtml(groups[teamName])}</tbody>
-      </table>
+  rowsBox.innerHTML = teamNames.map(teamName => `
+    <div class="group-section" data-label="${escapeHtml(teamName)} (${groups[teamName].length}명)">
+      <div class="card" style="margin-bottom:14px;">
+        <table class="team">
+          <thead><tr><th>이름</th><th>습득 단어</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
+          <tbody>${teamRowsHtml(groups[teamName])}</tbody>
+        </table>
+      </div>
     </div>
   `).join("");
+  attachStickyGroupScroll("team-groups", "team-sticky-label");
 }
 function teamRowsHtml(rows) {
   const today = todayStr();
@@ -1455,16 +1638,11 @@ function renderRosterList() {
   const rows = S.roster.filter(r => !q || r.name.toLowerCase().includes(q) || r.empId.toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q) || (r.division || "").toLowerCase().includes(q));
 
   const rowHtml = (r) => `
-    <div class="rowbetween small" style="padding:6px 0;border-bottom:1px solid var(--washi-dark);">
+    <div class="rowbetween small" style="padding:8px 0;border-bottom:1px solid var(--washi-dark);cursor:pointer;" onclick="openMemberModal('${r.empId}')">
       <span>${escapeHtml(r.name)} <span class="muted">(${escapeHtml(r.empId)})</span>
         ${r.role !== "member" ? `<span style="color:var(--hanko);font-weight:700;"> ${roleLabel(r.role)}</span>` : ""}
         ${r.active === false ? '<span class="muted">(비활성)</span>' : ""}</span>
-      <span style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${isDirector ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="promptChangeTeam('${r.empId}','${escapeHtml(r.division || "")}','${escapeHtml(r.team || "")}')">소속 변경</button>
-        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "divisionHead" ? "member" : "divisionHead"}')">${r.role === "divisionHead" ? "실장 해제" : "실장 지정"}</button>` : ""}
-        ${canEdit ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "leader" ? "member" : "leader"}')">${r.role === "leader" ? "팀장 해제" : "팀장 지정"}</button>` : ""}
-        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterActive('${r.empId}', ${r.active === false})">${r.active === false ? "활성화" : "비활성화"}</button>
-      </span>
+      <span class="muted">›</span>
     </div>
   `;
 
@@ -1502,20 +1680,60 @@ function renderRosterList() {
   `).join("");
   attachStickyGroupScroll("roster-list", "roster-sticky-label");
 }
-function promptChangeTeam(empId, currentDivision, currentTeam) {
-  const division = prompt("새 소속실을 입력하세요. (없으면 비워두세요)", currentDivision || "");
-  if (division === null) return;
-  const team = prompt("새 소속팀을 입력하세요. (없으면 비워두세요)", currentTeam || "");
-  if (team === null) return;
-  const patch = { division: division.trim(), team: team.trim() };
-  db.collection("roster").doc(empId).set(patch, { merge: true });
-  propagateToExisting(empId, patch);
+function openMemberModal(empId) {
+  const r = S.roster.find(x => x.empId === empId);
+  if (!r) return;
+  const role = S.user.role;
+  const isDirector = role === "director";
+  const isDivisionHead = role === "divisionHead";
+  const canEditOrg = isDirector; // 소속실/소속팀은 총괄관리자만 직접 수정 (실장은 본인 실 안에서만 팀 배정)
+  openModal(`
+    <div class="modal-box">
+      <div class="rowbetween" style="margin-bottom:10px;">
+        <h3 style="margin:0;">${escapeHtml(r.name)}</h3>
+        <button onclick="closeModal()" style="border:none;background:none;font-size:24px;color:var(--ink);line-height:1;">×</button>
+      </div>
+      <p class="muted small" style="margin:0 0 14px;">사번 ${escapeHtml(r.empId)}</p>
+
+      <div class="field"><label>소속실</label><input id="mem-division" value="${escapeHtml(r.division || "")}" ${canEditOrg ? "" : "disabled"} /></div>
+      <div class="field"><label>소속팀</label><input id="mem-team" value="${escapeHtml(r.team === "미배정" ? "" : (r.team || ""))}" /></div>
+      <div class="field">
+        <label>역할</label>
+        <select id="mem-role">
+          <option value="member" ${r.role === "member" ? "selected" : ""}>팀원</option>
+          <option value="leader" ${r.role === "leader" ? "selected" : ""}>팀장</option>
+          ${isDirector ? `<option value="divisionHead" ${r.role === "divisionHead" ? "selected" : ""}>실장</option>` : ""}
+        </select>
+      </div>
+      <div class="field">
+        <label>계정 상태</label>
+        <select id="mem-active">
+          <option value="true" ${r.active !== false ? "selected" : ""}>활성</option>
+          <option value="false" ${r.active === false ? "selected" : ""}>비활성</option>
+        </select>
+      </div>
+      <p id="member-modal-msg" class="muted small" style="margin-top:6px;"></p>
+      <button class="btn-hanko" style="width:100%;margin-top:14px;" onclick="saveMemberEdit('${r.empId}')">저장</button>
+    </div>
+  `);
 }
-function toggleRosterRole(empId, newRole) {
-  db.collection("roster").doc(empId).set({ role: newRole }, { merge: true });
-  propagateToExisting(empId, { role: newRole });
+async function saveMemberEdit(empId) {
+  const division = document.getElementById("mem-division").value.trim();
+  const team = document.getElementById("mem-team").value.trim();
+  const role = document.getElementById("mem-role").value;
+  const active = document.getElementById("mem-active").value === "true";
+  const msg = document.getElementById("member-modal-msg");
+  try {
+    const patch = { division, team: team || "미배정", role, active };
+    await db.collection("roster").doc(empId).set(patch, { merge: true });
+    await propagateToExisting(empId, { division, team: team || "미배정", role });
+    toast("저장했어요.");
+    closeModal();
+  } catch (e) {
+    console.error(e);
+    msg.textContent = "저장 중 오류가 발생했어요.";
+  }
 }
-function toggleRosterActive(empId, makeActive) { db.collection("roster").doc(empId).set({ active: makeActive }, { merge: true }); }
 /* 이미 로그인해서 users/progress 문서를 만든 사람의 역할/팀이 바뀌면, 기존 문서에도 반영 */
 async function propagateToExisting(empId, patch) {
   try {
