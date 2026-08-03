@@ -408,8 +408,9 @@ async function syncRoleFromRoster() {
     const r = rosterDoc.data();
     const freshRole = r.role || "member";
     const freshTeam = r.team || "미배정";
-    if (S.user.role !== freshRole || S.user.team !== freshTeam) {
-      const patch = { role: freshRole, team: freshTeam };
+    const freshDivision = r.division || "";
+    if (S.user.role !== freshRole || S.user.team !== freshTeam || S.user.division !== freshDivision) {
+      const patch = { role: freshRole, team: freshTeam, division: freshDivision };
       await Promise.all([
         db.collection("users").doc(S.uid).set(patch, { merge: true }),
         db.collection("progress").doc(S.uid).set(patch, { merge: true })
@@ -437,12 +438,12 @@ async function handleLogin() {
       errEl.classList.remove("hidden"); return;
     }
     await db.collection("users").doc(S.uid).set({
-      empId, name: rdata.name, role: rdata.role || "member", team: rdata.team || "미배정",
+      empId, name: rdata.name, role: rdata.role || "member", team: rdata.team || "미배정", division: rdata.division || "",
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastActive: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     await db.collection("progress").doc(S.uid).set({
-      empId, name: rdata.name, team: rdata.team || "미배정", role: rdata.role || "member",
+      empId, name: rdata.name, team: rdata.team || "미배정", division: rdata.division || "", role: rdata.role || "member",
       streak: 0, lastStudyDate: null, quizCount: 0, quizAccSum: 0, masteredCount: 0, dailyWordCount: 3
     }, { merge: true });
     const doc = await db.collection("users").doc(S.uid).get();
@@ -455,13 +456,16 @@ async function handleLogin() {
   }
 }
 
-function roleLabel(role) { return role === "director" ? "실장" : role === "leader" ? "팀장" : "팀원"; }
+function roleLabel(role) {
+  return role === "director" ? "총괄관리자" : role === "divisionHead" ? "실장" : role === "leader" ? "팀장" : "팀원";
+}
 function enterApp() {
   document.getElementById("loading").classList.add("hidden");
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("user-greeting").textContent = S.user.name + "님의 일본어 노트";
-  document.getElementById("user-sub").textContent = `${S.user.team || "미배정"} · ${roleLabel(S.user.role)}`;
+  const orgLabel = [S.user.division, S.user.team].filter(Boolean).join(" · ") || "미배정";
+  document.getElementById("user-sub").textContent = `${orgLabel} · ${roleLabel(S.user.role)}`;
   renderTabNav();
   setupListeners();
 }
@@ -497,10 +501,13 @@ function setupListeners() {
     if (S.tab === "record") renderTab();
   }, err => console.error("wordStats listener", err));
 
-  if (S.user.role === "leader" || S.user.role === "director") {
+  const MANAGER_ROLES = ["leader", "divisionHead", "director"];
+  if (MANAGER_ROLES.includes(S.user.role)) {
     const progressQuery = S.user.role === "director"
       ? db.collection("progress")
-      : db.collection("progress").where("team", "==", S.user.team);
+      : S.user.role === "divisionHead"
+        ? db.collection("progress").where("division", "==", S.user.division)
+        : db.collection("progress").where("team", "==", S.user.team);
     progressQuery.onSnapshot(snap => {
       const list = [];
       snap.forEach(d => list.push({ uid: d.id, ...d.data() }));
@@ -510,7 +517,9 @@ function setupListeners() {
 
     const rosterQuery = S.user.role === "director"
       ? db.collection("roster")
-      : db.collection("roster").where("team", "==", S.user.team);
+      : S.user.role === "divisionHead"
+        ? db.collection("roster").where("division", "==", S.user.division)
+        : db.collection("roster").where("team", "==", S.user.team);
     rosterQuery.onSnapshot(snap => {
       const list = [];
       snap.forEach(d => list.push({ empId: d.id, ...d.data() }));
@@ -557,7 +566,7 @@ function renderTabNav() {
     { id: "daily", label: "오늘의 학습" }, { id: "study", label: "자유학습" }, { id: "quiz", label: "퀴즈" },
     { id: "record", label: "기록" }
   ];
-  if (S.user.role === "leader" || S.user.role === "director") { tabs.push({ id: "team", label: "팀현황" }); tabs.push({ id: "admin", label: "관리" }); }
+  if (["leader", "divisionHead", "director"].includes(S.user.role)) { tabs.push({ id: "team", label: "팀현황" }); tabs.push({ id: "admin", label: "관리" }); }
   const nav = document.getElementById("tab-nav");
   nav.innerHTML = tabs.map(t => `<button class="tab-btn ${S.tab === t.id ? "active" : ""}" onclick="goTab('${t.id}')">${t.label}</button>`).join("");
 }
@@ -1197,12 +1206,12 @@ function renderTeamTab(c) {
   const today = todayStr();
   const rows = [...S.team];
   const studiedCount = rows.filter(r => r.lastStudyDate === today).length;
-  const isDirector = S.user.role === "director";
-  const teamCount = new Set(rows.map(r => r.team || "미배정")).size;
+  const showDivision = ["director", "divisionHead"].includes(S.user.role);
+  const groupCount = new Set(rows.map(r => `${r.division || ""}/${r.team || "미배정"}`)).size;
   c.innerHTML = `
     <div class="card" style="margin-bottom:14px;">
-      <p style="font-weight:700;margin:0;">오늘 학습 완료: ${studiedCount} / ${rows.length}명${isDirector ? ` (${teamCount}개 팀)` : ""}</p>
-      <input id="team-search" placeholder="이름, 사번${isDirector ? ", 팀" : ""} 검색" style="width:100%;margin-top:10px;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderTeamRows()" />
+      <p style="font-weight:700;margin:0;">오늘 학습 완료: ${studiedCount} / ${rows.length}명${showDivision ? ` (${groupCount}개 팀)` : ""}</p>
+      <input id="team-search" placeholder="이름, 사번${showDivision ? ", 팀" : ""} 검색" style="width:100%;margin-top:10px;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderTeamRows()" />
     </div>
     <div id="team-groups"></div>
   `;
@@ -1211,15 +1220,42 @@ function renderTeamTab(c) {
 function renderTeamRows() {
   const q = (document.getElementById("team-search")?.value || "").trim().toLowerCase();
   const isDirector = S.user.role === "director";
-  const rows = [...S.team].filter(r => !q || (r.name || "").toLowerCase().includes(q) || (r.empId || "").toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q));
+  const isDivisionHead = S.user.role === "divisionHead";
+  const rows = [...S.team].filter(r => !q || (r.name || "").toLowerCase().includes(q) || (r.empId || "").toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q) || (r.division || "").toLowerCase().includes(q));
   const groupsBox = document.getElementById("team-groups");
   if (!groupsBox) return;
+
+  if (isDirector) {
+    // 실장(division)까지 묶어서: 실 > 팀
+    const byDivision = {};
+    rows.forEach(r => { const d = r.division || "미배정 실"; (byDivision[d] = byDivision[d] || []).push(r); });
+    const divisionNames = Object.keys(byDivision).sort((a, b) => a.localeCompare(b, "ko"));
+    groupsBox.innerHTML = divisionNames.map(div => {
+      const byTeam = {};
+      byDivision[div].forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+      const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
+      return `
+        <div class="team-group-header small">${escapeHtml(div)} (${byDivision[div].length}명)</div>
+        ${teamNames.map(t => `
+          <div class="card" style="margin-bottom:14px;">
+            <p style="font-weight:700;margin:0 0 8px;">${escapeHtml(t)} (${byTeam[t].length}명)</p>
+            <table class="team">
+              <thead><tr><th>이름</th><th>습득 단어</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
+              <tbody>${teamRowsHtml(byTeam[t])}</tbody>
+            </table>
+          </div>
+        `).join("")}
+      `;
+    }).join("");
+    return;
+  }
+
   const groups = {};
   rows.forEach(r => { const t = r.team || "미배정"; (groups[t] = groups[t] || []).push(r); });
   const teamNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko"));
   groupsBox.innerHTML = teamNames.map(teamName => `
     <div class="card" style="margin-bottom:14px;">
-      ${isDirector ? `<p style="font-weight:700;margin:0 0 8px;">${escapeHtml(teamName)} (${groups[teamName].length}명)</p>` : ""}
+      ${isDivisionHead ? `<p style="font-weight:700;margin:0 0 8px;">${escapeHtml(teamName)} (${groups[teamName].length}명)</p>` : ""}
       <table class="team">
         <thead><tr><th>이름</th><th>습득 단어</th><th>오늘</th><th>연속</th><th>정답률</th></tr></thead>
         <tbody>${teamRowsHtml(groups[teamName])}</tbody>
@@ -1270,20 +1306,31 @@ function toggleTeamDetail(uid) {
    14. 관리 탭 (실장: 전체 팀/역할 관리 + 단어 관리 · 팀장: 자기 팀 팀원만)
 ========================================================= */
 function renderAdminTab(c) {
-  const isDirector = S.user.role === "director";
+  const role = S.user.role;
+  const isDirector = role === "director";
+  const isDivisionHead = role === "divisionHead";
+  let bulkGuide, bulkPlaceholder;
+  if (isDirector) {
+    bulkGuide = `한 줄에 "사번,이름,소속실,소속팀,직책" 형식으로 입력하세요. 직책은 비우면 팀원, <code>leader</code>(팀장), <code>divisionHead</code>(실장) 중 선택하세요. 소속실/소속팀이 없으면 비워두세요.<br/>예) 20231234,홍길동,설계1실,기계설계팀,leader<br/>20239999,김실장,개발실,,divisionHead`;
+    bulkPlaceholder = "20231234,홍길동,설계1실,기계설계팀,leader\n20235678,김영희,설계1실,기계설계팀,";
+  } else if (isDivisionHead) {
+    bulkGuide = `한 줄에 "사번,이름,소속팀,직책" 형식으로 입력하세요. 자동으로 <strong>${escapeHtml(S.user.division)}</strong> 소속으로 등록돼요. 직책은 비우면 팀원, <code>leader</code>는 팀장.<br/>예) 20231234,홍길동,기계설계팀,leader`;
+    bulkPlaceholder = "20231234,홍길동,기계설계팀,leader\n20235678,김영희,전기설계팀,";
+  } else {
+    bulkGuide = `한 줄에 "사번,이름" 형식으로 입력하세요. 자동으로 <strong>${escapeHtml(S.user.team)}</strong> 소속 팀원으로 등록돼요.<br/>예) 20231234,홍길동`;
+    bulkPlaceholder = "20231234,홍길동\n20235678,김영희";
+  }
+  const listTitle = isDirector ? "전체 인원" : isDivisionHead ? `${S.user.division} 전체` : `${S.user.team} 팀원`;
   c.innerHTML = `
     <div class="card" style="margin-bottom:18px;">
       <p style="font-weight:700;margin:0 0 8px;">팀원 일괄 등록</p>
-      ${isDirector
-        ? `<p class="muted small">한 줄에 "사번,이름,팀" 형식으로 입력하세요. 팀장으로 등록하려면 끝에 ",leader"를 추가하세요.<br/>예) 20231234,홍길동,엘리베이터팀<br/>20239999,김팀장,전장팀,leader</p>
-           <div class="field"><textarea id="roster-bulk" placeholder="20231234,홍길동,엘리베이터팀&#10;20235678,김영희,전장팀"></textarea></div>`
-        : `<p class="muted small">한 줄에 "사번,이름" 형식으로 입력하세요. 자동으로 <strong>${escapeHtml(S.user.team)}</strong> 소속 팀원으로 등록돼요.<br/>예) 20231234,홍길동</p>
-           <div class="field"><textarea id="roster-bulk" placeholder="20231234,홍길동&#10;20235678,김영희"></textarea></div>`}
+      <p class="muted small">${bulkGuide}</p>
+      <div class="field"><textarea id="roster-bulk" placeholder="${bulkPlaceholder}"></textarea></div>
       <button class="btn-hanko" style="width:100%;margin-top:10px;" onclick="bulkAddRoster()">일괄 등록</button>
       <p id="roster-msg" class="muted small" style="margin-top:6px;"></p>
     </div>
     <div class="card" style="margin-bottom:18px;">
-      <p style="font-weight:700;margin:0 0 10px;">${isDirector ? "전체 인원" : S.user.team + " 팀원"} (${S.roster.length}명)</p>
+      <p style="font-weight:700;margin:0 0 10px;">${listTitle} (${S.roster.length}명)</p>
       <input id="roster-search" placeholder="검색" style="width:100%;padding:8px;border:1px solid var(--washi-dark);border-radius:3px;" oninput="renderRosterList()" />
       <div id="roster-list" style="margin-top:10px;max-height:320px;overflow:auto;"></div>
     </div>
@@ -1327,7 +1374,9 @@ function renderAdminTab(c) {
   if (isDirector) renderSharedWordList();
 }
 async function bulkAddRoster() {
-  const isDirector = S.user.role === "director";
+  const role = S.user.role;
+  const isDirector = role === "director";
+  const isDivisionHead = role === "divisionHead";
   const raw = document.getElementById("roster-bulk").value;
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
   const msg = document.getElementById("roster-msg");
@@ -1335,11 +1384,21 @@ async function bulkAddRoster() {
   let batch = db.batch(); let count = 0, batchCount = 0;
   for (const line of lines) {
     const parts = line.split(",").map(s => (s || "").trim());
-    let empId, name, team, roleFlag;
-    if (isDirector) { [empId, name, team, roleFlag] = parts; if (!empId || !name || !team) continue; }
-    else { [empId, name] = parts; team = S.user.team; roleFlag = ""; if (!empId || !name) continue; }
-    const role = roleFlag === "leader" ? "leader" : roleFlag === "director" ? "director" : "member";
-    batch.set(db.collection("roster").doc(empId), { name, role, team, active: true }, { merge: true });
+    let empId, name, division, team, roleFlag;
+    if (isDirector) {
+      [empId, name, division, team, roleFlag] = parts;
+      if (!empId || !name) continue;
+    } else if (isDivisionHead) {
+      let teamFlag;
+      [empId, name, teamFlag, roleFlag] = parts;
+      division = S.user.division; team = teamFlag || "";
+      if (!empId || !name) continue;
+    } else {
+      [empId, name] = parts; division = S.user.division || ""; team = S.user.team; roleFlag = "";
+      if (!empId || !name) continue;
+    }
+    const newRole = roleFlag === "leader" ? "leader" : roleFlag === "divisionHead" && isDirector ? "divisionHead" : "member";
+    batch.set(db.collection("roster").doc(empId), { name, role: newRole, division: division || "", team: team || "", active: true }, { merge: true });
     count++; batchCount++;
     if (batchCount >= 400) { await batch.commit(); batch = db.batch(); batchCount = 0; }
   }
@@ -1348,36 +1407,61 @@ async function bulkAddRoster() {
   document.getElementById("roster-bulk").value = "";
 }
 function renderRosterList() {
-  const isDirector = S.user.role === "director";
+  const role = S.user.role;
+  const isDirector = role === "director";
+  const isDivisionHead = role === "divisionHead";
+  const canEdit = isDirector || isDivisionHead;
   const q = (document.getElementById("roster-search")?.value || "").trim().toLowerCase();
   const box = document.getElementById("roster-list");
   if (!box) return;
-  const rows = S.roster.filter(r => !q || r.name.toLowerCase().includes(q) || r.empId.toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q));
+  const rows = S.roster.filter(r => !q || r.name.toLowerCase().includes(q) || r.empId.toLowerCase().includes(q) || (r.team || "").toLowerCase().includes(q) || (r.division || "").toLowerCase().includes(q));
+
+  const rowHtml = (r) => `
+    <div class="rowbetween small" style="padding:6px 0;border-bottom:1px solid var(--washi-dark);">
+      <span>${escapeHtml(r.name)} <span class="muted">(${escapeHtml(r.empId)})</span>
+        ${r.role !== "member" ? `<span style="color:var(--hanko);font-weight:700;"> ${roleLabel(r.role)}</span>` : ""}
+        ${r.active === false ? '<span class="muted">(비활성)</span>' : ""}</span>
+      <span style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${isDirector ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="promptChangeTeam('${r.empId}','${escapeHtml(r.division || "")}','${escapeHtml(r.team || "")}')">소속 변경</button>
+        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "divisionHead" ? "member" : "divisionHead"}')">${r.role === "divisionHead" ? "실장 해제" : "실장 지정"}</button>` : ""}
+        ${canEdit ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "leader" ? "member" : "leader"}')">${r.role === "leader" ? "팀장 해제" : "팀장 지정"}</button>` : ""}
+        <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterActive('${r.empId}', ${r.active === false})">${r.active === false ? "활성화" : "비활성화"}</button>
+      </span>
+    </div>
+  `;
+
+  if (isDirector) {
+    const byDivision = {};
+    rows.forEach(r => { const d = r.division || "미배정 실"; (byDivision[d] = byDivision[d] || []).push(r); });
+    const divisionNames = Object.keys(byDivision).sort((a, b) => a.localeCompare(b, "ko"));
+    box.innerHTML = divisionNames.map(div => {
+      const byTeam = {};
+      byDivision[div].forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+      const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
+      return `
+        <div class="team-group-header small">${escapeHtml(div)} (${byDivision[div].length}명)</div>
+        ${teamNames.map(t => `<p class="muted small" style="margin:6px 0 2px;font-weight:700;">${escapeHtml(t)}</p>${byTeam[t].map(rowHtml).join("")}`).join("")}
+      `;
+    }).join("");
+    return;
+  }
+
   const groups = {};
   rows.forEach(r => { const t = r.team || "미배정"; (groups[t] = groups[t] || []).push(r); });
   const teamNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko"));
   box.innerHTML = teamNames.map(team => `
     <div class="team-group-header small">${escapeHtml(team)} (${groups[team].length}명)</div>
-    ${groups[team].map(r => `
-      <div class="rowbetween small" style="padding:6px 0;border-bottom:1px solid var(--washi-dark);">
-        <span>${escapeHtml(r.name)} <span class="muted">(${escapeHtml(r.empId)})</span>
-          ${r.role !== "member" ? `<span style="color:var(--hanko);font-weight:700;"> ${roleLabel(r.role)}</span>` : ""}
-          ${r.active === false ? '<span class="muted">(비활성)</span>' : ""}</span>
-        <span style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${isDirector ? `<button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="promptChangeTeam('${r.empId}','${escapeHtml(r.team || "")}')">팀 변경</button>
-          <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterRole('${r.empId}','${r.role === "leader" ? "member" : "leader"}')">${r.role === "leader" ? "팀장 해제" : "팀장 지정"}</button>` : ""}
-          <button class="btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRosterActive('${r.empId}', ${r.active === false})">${r.active === false ? "활성화" : "비활성화"}</button>
-        </span>
-      </div>
-    `).join("")}
+    ${groups[team].map(rowHtml).join("")}
   `).join("");
 }
-function promptChangeTeam(empId, currentTeam) {
-  const next = prompt("새 팀 이름을 입력하세요.", currentTeam || "");
-  if (!next || !next.trim()) return;
-  const team = next.trim();
-  db.collection("roster").doc(empId).set({ team }, { merge: true });
-  propagateToExisting(empId, { team });
+function promptChangeTeam(empId, currentDivision, currentTeam) {
+  const division = prompt("새 소속실을 입력하세요. (없으면 비워두세요)", currentDivision || "");
+  if (division === null) return;
+  const team = prompt("새 소속팀을 입력하세요. (없으면 비워두세요)", currentTeam || "");
+  if (team === null) return;
+  const patch = { division: division.trim(), team: team.trim() };
+  db.collection("roster").doc(empId).set(patch, { merge: true });
+  propagateToExisting(empId, patch);
 }
 function toggleRosterRole(empId, newRole) {
   db.collection("roster").doc(empId).set({ role: newRole }, { merge: true });
