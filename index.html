@@ -109,37 +109,20 @@
     <p class="brand-jp">会社の日本語ノート</p>
     <h1 class="brand-ko" style="margin-bottom:18px;">로그인</h1>
 
-    <div id="login-step1">
-      <div class="field">
-        <label>사번</label>
-        <input id="login-empid" placeholder="예: 20231234" />
-      </div>
-      <p id="login-error1" class="err-msg hidden"></p>
-      <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handleEmpIdCheck()">다음</button>
+    <div class="field">
+      <label>사번</label>
+      <input id="login-empid" placeholder="예: 20231234" />
+      <label>비밀번호</label>
+      <input id="login-password" type="password" placeholder="처음이면 사번과 동일하게 입력" />
+    </div>
+    <p class="muted small" id="login-name-hint" style="margin-top:10px;">처음 로그인하시면 아래 이름도 입력해주세요.</p>
+    <div class="field" id="login-name-field">
+      <label>이름 (처음 로그인 시에만)</label>
+      <input id="login-name" placeholder="예: 홍길동" />
     </div>
 
-    <div id="login-step-new" class="hidden">
-      <p class="muted small" style="margin-bottom:10px;">처음 로그인하시네요. 이름을 확인해주세요.</p>
-      <div class="field">
-        <label>이름</label>
-        <input id="login-name" placeholder="예: 홍길동" />
-      </div>
-      <p class="muted small" style="margin-top:10px;">초기 비밀번호는 사번과 동일해요. 로그인 후 설정에서 바꿀 수 있어요.</p>
-      <p id="login-error-new" class="err-msg hidden"></p>
-      <button class="btn-hanko" style="width:100%;margin-top:14px;" onclick="handleFirstLogin()">시작하기</button>
-      <button class="btn-ghost" style="width:100%;margin-top:8px;" onclick="backToStep1()">이전</button>
-    </div>
-
-    <div id="login-step-existing" class="hidden">
-      <div class="field">
-        <label>비밀번호</label>
-        <input id="login-password" type="password" placeholder="비밀번호" />
-      </div>
-      <p id="login-error-existing" class="err-msg hidden"></p>
-      <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handlePasswordLogin()">로그인</button>
-      <button class="btn-ghost" style="width:100%;margin-top:8px;" onclick="backToStep1()">이전</button>
-    </div>
-
+    <p id="login-error" class="err-msg hidden"></p>
+    <button class="btn-hanko" style="width:100%;margin-top:16px;" onclick="handleLoginSubmit()">로그인 / 시작하기</button>
     <p class="muted small" style="margin-top:14px;">등록된 사번이 없다면 팀장(관리자)에게 문의해주세요.</p>
   </div>
 </div>
@@ -288,7 +271,7 @@ function attachStickyGroupScroll(scrollElId, labelElId) {
     labelEl.textContent = current.dataset.label || "";
   };
   scrollEl.onscroll = update;
-  update();
+  requestAnimationFrame(update);
 }
 function openModal(innerHtml) {
   const root = document.getElementById("modal-root");
@@ -475,39 +458,6 @@ async function syncRoleFromRoster() {
   } catch (e) { console.error("syncRoleFromRoster", e); }
 }
 
-function showLoginStep(step) {
-  ["login-step1", "login-step-new", "login-step-existing"].forEach(id => document.getElementById(id).classList.add("hidden"));
-  document.getElementById(step).classList.remove("hidden");
-}
-function backToStep1() { showLoginStep("login-step1"); }
-
-let __pendingEmpId = null, __pendingRosterName = null;
-async function handleEmpIdCheck() {
-  const empId = document.getElementById("login-empid").value.trim();
-  const errEl = document.getElementById("login-error1");
-  errEl.classList.add("hidden");
-  if (!empId) { errEl.textContent = "사번을 입력해주세요."; errEl.classList.remove("hidden"); return; }
-  try {
-    const rosterDoc = await db.collection("roster").doc(empId).get();
-    if (!rosterDoc.exists || rosterDoc.data().active === false) {
-      errEl.textContent = "등록되지 않은 사번이거나 비활성화된 계정이에요. 관리자에게 문의해주세요.";
-      errEl.classList.remove("hidden"); return;
-    }
-    __pendingEmpId = empId;
-    __pendingRosterName = rosterDoc.data().name;
-    const methods = await auth.fetchSignInMethodsForEmail(empIdToEmail(empId));
-    if (methods.length === 0) {
-      showLoginStep("login-step-new");
-    } else {
-      showLoginStep("login-step-existing");
-    }
-  } catch (e) {
-    console.error(e);
-    errEl.textContent = "확인 중 오류가 발생했어요. 다시 시도해주세요.";
-    errEl.classList.remove("hidden");
-  }
-}
-
 async function createProfileDocs(empId, rdata) {
   await db.collection("users").doc(S.uid).set({
     empId, name: rdata.name, role: rdata.role || "member", team: rdata.team || "미배정", division: rdata.division || "",
@@ -520,41 +470,49 @@ async function createProfileDocs(empId, rdata) {
   }, { merge: true });
 }
 
-async function handleFirstLogin() {
+async function handleLoginSubmit() {
+  const empId = document.getElementById("login-empid").value.trim();
+  const password = document.getElementById("login-password").value;
   const name = document.getElementById("login-name").value.trim();
-  const errEl = document.getElementById("login-error-new");
+  const errEl = document.getElementById("login-error");
   errEl.classList.add("hidden");
-  if (!name) { errEl.textContent = "이름을 입력해주세요."; errEl.classList.remove("hidden"); return; }
-  if (__pendingRosterName.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
-    errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
-    errEl.classList.remove("hidden"); return;
-  }
+  if (!empId) { errEl.textContent = "사번을 입력해주세요."; errEl.classList.remove("hidden"); return; }
   try {
-    const cred = await auth.createUserWithEmailAndPassword(empIdToEmail(__pendingEmpId), __pendingEmpId);
-    S.uid = cred.user.uid;
-    const rosterDoc = await db.collection("roster").doc(__pendingEmpId).get();
-    await createProfileDocs(__pendingEmpId, rosterDoc.data());
-    const doc = await db.collection("users").doc(S.uid).get();
-    S.user = doc.data();
-    toast("초기 비밀번호는 사번과 동일해요. 설정에서 바꿔주세요.");
-    enterApp();
+    const rosterDoc = await db.collection("roster").doc(empId).get();
+    if (!rosterDoc.exists || rosterDoc.data().active === false) {
+      errEl.textContent = "등록되지 않은 사번이거나 비활성화된 계정이에요. 관리자에게 문의해주세요.";
+      errEl.classList.remove("hidden"); return;
+    }
+    const rdata = rosterDoc.data();
+    const methods = await auth.fetchSignInMethodsForEmail(empIdToEmail(empId));
+    if (methods.length === 0) {
+      // 처음 로그인: 이름 확인 후 초기 비밀번호(=사번)로 계정 생성
+      if (!name) { errEl.textContent = "처음 로그인하시네요. 이름도 입력해주세요."; errEl.classList.remove("hidden"); return; }
+      if (rdata.name.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
+        errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
+        errEl.classList.remove("hidden"); return;
+      }
+      const cred = await auth.createUserWithEmailAndPassword(empIdToEmail(empId), empId);
+      S.uid = cred.user.uid;
+      await createProfileDocs(empId, rdata);
+      const doc = await db.collection("users").doc(S.uid).get();
+      S.user = doc.data();
+      toast("초기 비밀번호는 사번과 동일해요. 설정에서 바꿔주세요.");
+      enterApp();
+    } else {
+      // 기존 계정: 비밀번호로 로그인
+      if (!password) { errEl.textContent = "비밀번호를 입력해주세요."; errEl.classList.remove("hidden"); return; }
+      try {
+        await auth.signInWithEmailAndPassword(empIdToEmail(empId), password);
+        // onAuthStateChanged가 나머지(S.uid 설정, 프로필 로드, enterApp)를 처리함
+      } catch (e2) {
+        errEl.textContent = "비밀번호가 틀렸어요. 처음 로그인이시면 사번을 비밀번호칸에 입력해보세요.";
+        errEl.classList.remove("hidden");
+      }
+    }
   } catch (e) {
     console.error(e);
-    errEl.textContent = "가입 중 오류가 발생했어요: " + (e.message || "");
-    errEl.classList.remove("hidden");
-  }
-}
-
-async function handlePasswordLogin() {
-  const password = document.getElementById("login-password").value;
-  const errEl = document.getElementById("login-error-existing");
-  errEl.classList.add("hidden");
-  if (!password) { errEl.textContent = "비밀번호를 입력해주세요."; errEl.classList.remove("hidden"); return; }
-  try {
-    await auth.signInWithEmailAndPassword(empIdToEmail(__pendingEmpId), password);
-    // onAuthStateChanged가 나머지(S.uid 설정, 프로필 로드, enterApp)를 처리함
-  } catch (e) {
-    errEl.textContent = "비밀번호가 틀렸어요. 다시 확인해주세요.";
+    errEl.textContent = "로그인 중 오류가 발생했어요. 다시 시도해주세요.";
     errEl.classList.remove("hidden");
   }
 }
@@ -1687,6 +1645,7 @@ function openMemberModal(empId) {
   const isDirector = role === "director";
   const isDivisionHead = role === "divisionHead";
   const canEditOrg = isDirector; // 소속실/소속팀은 총괄관리자만 직접 수정 (실장은 본인 실 안에서만 팀 배정)
+  const targetIsDirector = r.role === "director";
   openModal(`
     <div class="modal-box">
       <div class="rowbetween" style="margin-bottom:10px;">
@@ -1699,34 +1658,38 @@ function openMemberModal(empId) {
       <div class="field"><label>소속팀</label><input id="mem-team" value="${escapeHtml(r.team === "미배정" ? "" : (r.team || ""))}" /></div>
       <div class="field">
         <label>역할</label>
-        <select id="mem-role">
-          <option value="member" ${r.role === "member" ? "selected" : ""}>팀원</option>
-          <option value="leader" ${r.role === "leader" ? "selected" : ""}>팀장</option>
-          ${isDirector ? `<option value="divisionHead" ${r.role === "divisionHead" ? "selected" : ""}>실장</option>` : ""}
-        </select>
+        ${targetIsDirector
+          ? `<input value="총괄관리자" disabled /><p class="muted small" style="margin-top:4px;">총괄관리자 권한은 여기서 바꿀 수 없어요(실수 방지). Firebase 콘솔에서만 변경 가능해요.</p>`
+          : `<select id="mem-role">
+              <option value="member" ${r.role === "member" ? "selected" : ""}>팀원</option>
+              <option value="leader" ${r.role === "leader" ? "selected" : ""}>팀장</option>
+              ${isDirector ? `<option value="divisionHead" ${r.role === "divisionHead" ? "selected" : ""}>실장</option>` : ""}
+            </select>`}
       </div>
       <div class="field">
         <label>계정 상태</label>
-        <select id="mem-active">
+        <select id="mem-active" ${targetIsDirector ? "disabled" : ""}>
           <option value="true" ${r.active !== false ? "selected" : ""}>활성</option>
           <option value="false" ${r.active === false ? "selected" : ""}>비활성</option>
         </select>
       </div>
       <p id="member-modal-msg" class="muted small" style="margin-top:6px;"></p>
-      <button class="btn-hanko" style="width:100%;margin-top:14px;" onclick="saveMemberEdit('${r.empId}')">저장</button>
+      <button class="btn-hanko" style="width:100%;margin-top:14px;" onclick="saveMemberEdit('${r.empId}', ${targetIsDirector})">저장</button>
     </div>
   `);
 }
-async function saveMemberEdit(empId) {
+async function saveMemberEdit(empId, targetIsDirector) {
   const division = document.getElementById("mem-division").value.trim();
   const team = document.getElementById("mem-team").value.trim();
-  const role = document.getElementById("mem-role").value;
-  const active = document.getElementById("mem-active").value === "true";
   const msg = document.getElementById("member-modal-msg");
   try {
-    const patch = { division, team: team || "미배정", role, active };
+    const patch = { division, team: team || "미배정" };
+    if (!targetIsDirector) {
+      patch.role = document.getElementById("mem-role").value;
+      patch.active = document.getElementById("mem-active").value === "true";
+    }
     await db.collection("roster").doc(empId).set(patch, { merge: true });
-    await propagateToExisting(empId, { division, team: team || "미배정", role });
+    await propagateToExisting(empId, targetIsDirector ? { division, team: team || "미배정" } : { division, team: team || "미배정", role: patch.role });
     toast("저장했어요.");
     closeModal();
   } catch (e) {
