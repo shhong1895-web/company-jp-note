@@ -484,31 +484,45 @@ async function handleLoginSubmit() {
       errEl.classList.remove("hidden"); return;
     }
     const rdata = rosterDoc.data();
-    const methods = await auth.fetchSignInMethodsForEmail(empIdToEmail(empId));
-    if (methods.length === 0) {
-      // 처음 로그인: 이름 확인 후 초기 비밀번호(=사번)로 계정 생성
-      if (!name) { errEl.textContent = "처음 로그인하시네요. 이름도 입력해주세요."; errEl.classList.remove("hidden"); return; }
+    const email = empIdToEmail(empId);
+
+    if (name) {
+      // 이름을 입력했다면 처음 로그인 시도로 보고, 먼저 이름부터 확인
       if (rdata.name.replace(/\s/g, "") !== name.replace(/\s/g, "")) {
         errEl.textContent = "이름이 일치하지 않아요. 다시 확인해주세요.";
         errEl.classList.remove("hidden"); return;
       }
-      const cred = await auth.createUserWithEmailAndPassword(empIdToEmail(empId), empId);
-      S.uid = cred.user.uid;
-      await createProfileDocs(empId, rdata);
-      const doc = await db.collection("users").doc(S.uid).get();
-      S.user = doc.data();
-      toast("초기 비밀번호는 사번과 동일해요. 설정에서 바꿔주세요.");
-      enterApp();
-    } else {
-      // 기존 계정: 비밀번호로 로그인
-      if (!password) { errEl.textContent = "비밀번호를 입력해주세요."; errEl.classList.remove("hidden"); return; }
       try {
-        await auth.signInWithEmailAndPassword(empIdToEmail(empId), password);
-        // onAuthStateChanged가 나머지(S.uid 설정, 프로필 로드, enterApp)를 처리함
-      } catch (e2) {
-        errEl.textContent = "비밀번호가 틀렸어요. 처음 로그인이시면 사번을 비밀번호칸에 입력해보세요.";
-        errEl.classList.remove("hidden");
+        const cred = await auth.createUserWithEmailAndPassword(email, empId);
+        S.uid = cred.user.uid;
+        await createProfileDocs(empId, rdata);
+        const doc = await db.collection("users").doc(S.uid).get();
+        S.user = doc.data();
+        toast("초기 비밀번호는 사번과 동일해요. 설정에서 바꿔주세요.");
+        enterApp();
+        return;
+      } catch (e1) {
+        if (e1.code !== "auth/email-already-in-use") {
+          errEl.textContent = "가입 중 오류가 발생했어요: " + (e1.message || "");
+          errEl.classList.remove("hidden");
+          return;
+        }
+        // 이미 계정이 있으면 아래에서 비밀번호로 로그인 시도
       }
+    }
+
+    if (!password) {
+      errEl.textContent = "비밀번호를 입력해주세요. (처음 로그인이면 이름도 함께 입력해주세요)";
+      errEl.classList.remove("hidden");
+      return;
+    }
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      // onAuthStateChanged가 나머지(S.uid 설정, 프로필 로드, enterApp)를 처리함
+    } catch (e2) {
+      console.error(e2);
+      errEl.textContent = "비밀번호가 틀렸어요. 처음 로그인이시면 이름을 입력하고 비밀번호칸에 사번을 넣어주세요.";
+      errEl.classList.remove("hidden");
     }
   } catch (e) {
     console.error(e);
