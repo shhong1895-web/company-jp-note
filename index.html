@@ -1420,7 +1420,7 @@ function renderTeamRows() {
           </div>`;
       } else {
         const byTeam = {};
-        members.forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+        members.forEach(r => { const t = (r.team && r.team !== "미배정") ? r.team : "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
         const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
         inner = teamNames.map(t => `
           <div class="card" style="margin-bottom:14px;">
@@ -1632,7 +1632,7 @@ function renderRosterList() {
       let inner;
       if (hasDivision) {
         const byTeam = {};
-        members.forEach(r => { const t = r.team || "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
+        members.forEach(r => { const t = (r.team && r.team !== "미배정") ? r.team : "직속"; (byTeam[t] = byTeam[t] || []).push(r); });
         const teamNames = Object.keys(byTeam).sort((a, b) => a.localeCompare(b, "ko"));
         inner = teamNames.map(t => `<p class="muted small" style="margin:6px 0 2px;font-weight:700;">${escapeHtml(t)}</p>${byTeam[t].map(rowHtml).join("")}`).join("");
       } else {
